@@ -46,6 +46,7 @@ const MyOrders = () => {
 					{tabs.map((tab) => (
 						<button
 							key={tab}
+							onClick={() => setActiveTab(tab)}
 							className={`px-4 py-2 text-sm font-medium rounded-xl whitespace-nowrap transition-colors
 							${
 								activeTab === tab
