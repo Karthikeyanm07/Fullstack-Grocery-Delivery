@@ -7,6 +7,22 @@ datasource db {
   provider = "postgresql"
 }
 
+// --------- ENUMS ----------- \\
+enum OrderStatus {
+  Placed
+  Confirmed
+  Preparing
+  OutForDelivery
+  Delivered
+  Cancelled
+}
+
+enum VehicleType {
+  bike
+  scooter
+  car
+}
+
 model User {
   id        String    @id @default(uuid())
   name      String
@@ -14,6 +30,7 @@ model User {
   password  String
   phone     String?   @default("")
   avatar    String?   @default("")
+  isAdmin   Boolean   @default(false)
   addresses Address[]
   orders    Order[]
   createdAt DateTime  @default(now())
@@ -64,7 +81,7 @@ model Order {
   deliveryFee     Float? @default(0)
   tax             Float? @default(0)
   total           Float
-  status          String @default("Placed")
+  status          OrderStatus @default(Placed)
   statusHistory   Json
 
   deliveryPartnerId String?
@@ -84,9 +101,19 @@ model DeliveryPartner {
   password    String
   phone       String
   avatar      String?  @default("")
-  vehicleType String?  @default("bike")
-  isActive    Boolean? @default(true)
+  vehicleType VehicleType  @default(bike)
+  isActive    Boolean @default(true)
   orders      Order[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model RateLimit {
+  id        String   @id @default(uuid())
+  key       String   @unique  // e.g. "login:192.168.1.1"
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([key])
+  @@index([expiresAt])  // for cleanup job
 }
