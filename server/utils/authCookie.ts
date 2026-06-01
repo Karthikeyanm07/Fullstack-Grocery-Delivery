@@ -1,28 +1,32 @@
+import { AUTH_COOKIE_MAX_AGE_MS } from "../constants/authConstants.js";
 // src/utils/cookieHelper.ts
 import { Response } from "express";
 
-const SEVEN_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const cookieBaseOptions = {
+	httpOnly: true,
+	secure: process.env.NODE_ENV === "production",
+	sameSite: "strict" as const,
+	path: "/",
+};
 
 /**
- * Attaches a secure authentication token to the HTTP response cookie
+ * Attaches a signed auth token to the response as an HttpOnly cookie.
  */
-export const sendAuthCookie = (res: Response, token: string) => {
+export const sendAuthCookie = (res: Response, token: string): void => {
 	res.cookie("token", token, {
-		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
-		sameSite: "strict",
-		maxAge: SEVEN_DAYS_MS,
+		...cookieBaseOptions,
+		maxAge: AUTH_COOKIE_MAX_AGE_MS,
 	});
 };
 
 /**
- * Clears the authentication token cookie (Useful for Logout)
+ * Clears the auth cookie.
+ * Options must match sendAuthCookie exactly — path, domain, secure — or
+ * the browser will silently ignore the deletion.
  */
 export const clearAuthCookie = (res: Response) => {
 	res.cookie("token", "", {
-		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
-		sameSite: "strict",
+		...cookieBaseOptions,
 		expires: new Date(0), // Sets expiration date to past, erasing it instantly
 	});
 };

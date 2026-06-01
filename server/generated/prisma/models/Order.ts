@@ -48,7 +48,7 @@ export type OrderMinAggregateOutputType = {
   deliveryFee: number | null
   tax: number | null
   total: number | null
-  status: string | null
+  status: $Enums.OrderStatus | null
   deliveryPartnerId: string | null
   deliveryOtp: string | null
   isPaid: boolean | null
@@ -64,7 +64,7 @@ export type OrderMaxAggregateOutputType = {
   deliveryFee: number | null
   tax: number | null
   total: number | null
-  status: string | null
+  status: $Enums.OrderStatus | null
   deliveryPartnerId: string | null
   deliveryOtp: string | null
   isPaid: boolean | null
@@ -257,7 +257,7 @@ export type OrderGroupByOutputType = {
   deliveryFee: number | null
   tax: number | null
   total: number
-  status: string
+  status: $Enums.OrderStatus
   statusHistory: runtime.JsonValue
   deliveryPartnerId: string | null
   deliveryOtp: string | null
@@ -300,7 +300,7 @@ export type OrderWhereInput = {
   deliveryFee?: Prisma.FloatNullableFilter<"Order"> | number | null
   tax?: Prisma.FloatNullableFilter<"Order"> | number | null
   total?: Prisma.FloatFilter<"Order"> | number
-  status?: Prisma.StringFilter<"Order"> | string
+  status?: Prisma.EnumOrderStatusFilter<"Order"> | $Enums.OrderStatus
   statusHistory?: Prisma.JsonFilter<"Order">
   deliveryPartnerId?: Prisma.StringNullableFilter<"Order"> | string | null
   deliveryOtp?: Prisma.StringNullableFilter<"Order"> | string | null
@@ -347,7 +347,7 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<{
   deliveryFee?: Prisma.FloatNullableFilter<"Order"> | number | null
   tax?: Prisma.FloatNullableFilter<"Order"> | number | null
   total?: Prisma.FloatFilter<"Order"> | number
-  status?: Prisma.StringFilter<"Order"> | string
+  status?: Prisma.EnumOrderStatusFilter<"Order"> | $Enums.OrderStatus
   statusHistory?: Prisma.JsonFilter<"Order">
   deliveryPartnerId?: Prisma.StringNullableFilter<"Order"> | string | null
   deliveryOtp?: Prisma.StringNullableFilter<"Order"> | string | null
@@ -397,7 +397,7 @@ export type OrderScalarWhereWithAggregatesInput = {
   deliveryFee?: Prisma.FloatNullableWithAggregatesFilter<"Order"> | number | null
   tax?: Prisma.FloatNullableWithAggregatesFilter<"Order"> | number | null
   total?: Prisma.FloatWithAggregatesFilter<"Order"> | number
-  status?: Prisma.StringWithAggregatesFilter<"Order"> | string
+  status?: Prisma.EnumOrderStatusWithAggregatesFilter<"Order"> | $Enums.OrderStatus
   statusHistory?: Prisma.JsonWithAggregatesFilter<"Order">
   deliveryPartnerId?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   deliveryOtp?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
@@ -416,7 +416,7 @@ export type OrderCreateInput = {
   deliveryFee?: number | null
   tax?: number | null
   total: number
-  status?: string
+  status?: $Enums.OrderStatus
   statusHistory: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -437,7 +437,7 @@ export type OrderUncheckedCreateInput = {
   deliveryFee?: number | null
   tax?: number | null
   total: number
-  status?: string
+  status?: $Enums.OrderStatus
   statusHistory: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryPartnerId?: string | null
   deliveryOtp?: string | null
@@ -456,7 +456,7 @@ export type OrderUpdateInput = {
   deliveryFee?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   tax?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
   statusHistory?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -477,7 +477,7 @@ export type OrderUncheckedUpdateInput = {
   deliveryFee?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   tax?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
   statusHistory?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryPartnerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -497,7 +497,7 @@ export type OrderCreateManyInput = {
   deliveryFee?: number | null
   tax?: number | null
   total: number
-  status?: string
+  status?: $Enums.OrderStatus
   statusHistory: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryPartnerId?: string | null
   deliveryOtp?: string | null
@@ -516,7 +516,7 @@ export type OrderUpdateManyMutationInput = {
   deliveryFee?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   tax?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
   statusHistory?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -535,7 +535,7 @@ export type OrderUncheckedUpdateManyInput = {
   deliveryFee?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   tax?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
   statusHistory?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryPartnerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -663,6 +663,10 @@ export type OrderUncheckedUpdateManyWithoutUserNestedInput = {
   deleteMany?: Prisma.OrderScalarWhereInput | Prisma.OrderScalarWhereInput[]
 }
 
+export type EnumOrderStatusFieldUpdateOperationsInput = {
+  set?: $Enums.OrderStatus
+}
+
 export type OrderCreateNestedManyWithoutDeliveryPartnerInput = {
   create?: Prisma.XOR<Prisma.OrderCreateWithoutDeliveryPartnerInput, Prisma.OrderUncheckedCreateWithoutDeliveryPartnerInput> | Prisma.OrderCreateWithoutDeliveryPartnerInput[] | Prisma.OrderUncheckedCreateWithoutDeliveryPartnerInput[]
   connectOrCreate?: Prisma.OrderCreateOrConnectWithoutDeliveryPartnerInput | Prisma.OrderCreateOrConnectWithoutDeliveryPartnerInput[]
@@ -714,7 +718,7 @@ export type OrderCreateWithoutUserInput = {
   deliveryFee?: number | null
   tax?: number | null
   total: number
-  status?: string
+  status?: $Enums.OrderStatus
   statusHistory: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -733,7 +737,7 @@ export type OrderUncheckedCreateWithoutUserInput = {
   deliveryFee?: number | null
   tax?: number | null
   total: number
-  status?: string
+  status?: $Enums.OrderStatus
   statusHistory: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryPartnerId?: string | null
   deliveryOtp?: string | null
@@ -782,7 +786,7 @@ export type OrderScalarWhereInput = {
   deliveryFee?: Prisma.FloatNullableFilter<"Order"> | number | null
   tax?: Prisma.FloatNullableFilter<"Order"> | number | null
   total?: Prisma.FloatFilter<"Order"> | number
-  status?: Prisma.StringFilter<"Order"> | string
+  status?: Prisma.EnumOrderStatusFilter<"Order"> | $Enums.OrderStatus
   statusHistory?: Prisma.JsonFilter<"Order">
   deliveryPartnerId?: Prisma.StringNullableFilter<"Order"> | string | null
   deliveryOtp?: Prisma.StringNullableFilter<"Order"> | string | null
@@ -801,7 +805,7 @@ export type OrderCreateWithoutDeliveryPartnerInput = {
   deliveryFee?: number | null
   tax?: number | null
   total: number
-  status?: string
+  status?: $Enums.OrderStatus
   statusHistory: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -821,7 +825,7 @@ export type OrderUncheckedCreateWithoutDeliveryPartnerInput = {
   deliveryFee?: number | null
   tax?: number | null
   total: number
-  status?: string
+  status?: $Enums.OrderStatus
   statusHistory: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -865,7 +869,7 @@ export type OrderCreateManyUserInput = {
   deliveryFee?: number | null
   tax?: number | null
   total: number
-  status?: string
+  status?: $Enums.OrderStatus
   statusHistory: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryPartnerId?: string | null
   deliveryOtp?: string | null
@@ -884,7 +888,7 @@ export type OrderUpdateWithoutUserInput = {
   deliveryFee?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   tax?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
   statusHistory?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -903,7 +907,7 @@ export type OrderUncheckedUpdateWithoutUserInput = {
   deliveryFee?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   tax?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
   statusHistory?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryPartnerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -922,7 +926,7 @@ export type OrderUncheckedUpdateManyWithoutUserInput = {
   deliveryFee?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   tax?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
   statusHistory?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryPartnerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -942,7 +946,7 @@ export type OrderCreateManyDeliveryPartnerInput = {
   deliveryFee?: number | null
   tax?: number | null
   total: number
-  status?: string
+  status?: $Enums.OrderStatus
   statusHistory: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -960,7 +964,7 @@ export type OrderUpdateWithoutDeliveryPartnerInput = {
   deliveryFee?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   tax?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
   statusHistory?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -980,7 +984,7 @@ export type OrderUncheckedUpdateWithoutDeliveryPartnerInput = {
   deliveryFee?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   tax?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
   statusHistory?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -999,7 +1003,7 @@ export type OrderUncheckedUpdateManyWithoutDeliveryPartnerInput = {
   deliveryFee?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   tax?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
   statusHistory?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   deliveryOtp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   liveLocation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -1126,7 +1130,7 @@ export type $OrderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     deliveryFee: number | null
     tax: number | null
     total: number
-    status: string
+    status: $Enums.OrderStatus
     statusHistory: runtime.JsonValue
     deliveryPartnerId: string | null
     deliveryOtp: string | null
@@ -1568,7 +1572,7 @@ export interface OrderFieldRefs {
   readonly deliveryFee: Prisma.FieldRef<"Order", 'Float'>
   readonly tax: Prisma.FieldRef<"Order", 'Float'>
   readonly total: Prisma.FieldRef<"Order", 'Float'>
-  readonly status: Prisma.FieldRef<"Order", 'String'>
+  readonly status: Prisma.FieldRef<"Order", 'OrderStatus'>
   readonly statusHistory: Prisma.FieldRef<"Order", 'Json'>
   readonly deliveryPartnerId: Prisma.FieldRef<"Order", 'String'>
   readonly deliveryOtp: Prisma.FieldRef<"Order", 'String'>
