@@ -70,7 +70,7 @@ const getClientIP = (req: Request): string => {
 };
 
 // Register
-// POST - /api/auth/resgister
+// POST - /api/auth/register
 export const register = async (req: Request, res: Response) => {
 	try {
 		const IP = getClientIP(req);

@@ -1,0 +1,20 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "server/src/server.ts",
+            "use": "@vercel/node",
+            "config": {
+                "includeFiles": [
+                    "server/src/**"
+                ]
+            }
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "server/dist/server.js"
+        }
+    ]
+}
