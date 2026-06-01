@@ -10,7 +10,7 @@ import {
 	QuerySchema,
 	UpdateProductSchema,
 } from "../zod/schemas.js";
-import { Prisma } from "../generated/prisma/browser.js";
+import { Prisma } from "../generated/prisma/client.js";
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 // Discount is a derived value — computed here rather than stored in the DB

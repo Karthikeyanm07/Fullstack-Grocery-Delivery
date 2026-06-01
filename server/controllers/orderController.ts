@@ -8,9 +8,8 @@ import {
 	TAX_RATE,
 } from "../constants/authConstants.js";
 import { checkRateLimit } from "../utils/rateLimiter.js";
-import { OrderStatus, Prisma } from "../generated/prisma/browser.js";
+import { OrderStatus, Prisma } from "../generated/prisma/client.js";
 import { inngest } from "../inngest/index.js";
-import fa from "zod/v4/locales/fa.cjs";
 import { validStatuses } from "../constants/utilities.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

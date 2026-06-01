@@ -2,10 +2,13 @@ import { AUTH_COOKIE_MAX_AGE_MS } from "../constants/authConstants.js";
 // src/utils/cookieHelper.ts
 import { Response } from "express";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const cookieBaseOptions = {
 	httpOnly: true,
-	secure: process.env.NODE_ENV === "production",
-	sameSite: "strict" as const,
+	secure: isProduction,
+	// Cross-origin client (e.g. Vercel frontend) needs SameSite=None with Secure
+	sameSite: (isProduction ? "none" : "strict") as "strict" | "none",
 	path: "/",
 };
 
