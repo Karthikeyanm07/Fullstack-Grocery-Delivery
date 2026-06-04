@@ -24,6 +24,14 @@ export const PRODUCT_WRITE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 export const ORDER_CREATE_MAX_ATTEMPTS = 10;
 export const ORDER_CREATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
+// Rate limiting — address mutations (per user ID)
+export const ADDRESS_WRITE_MAX_ATTEMPTS = 20;
+export const ADDRESS_WRITE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+// Rate limiting — delivery partner login (same strictness as user login)
+export const PARTNER_LOGIN_MAX_ATTEMPTS = 5;
+export const PARTNER_LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
 // bcrypt
 export const BCRYPT_ROUNDS = 12;
 
@@ -31,3 +39,4 @@ export const BCRYPT_ROUNDS = 12;
 export const FREE_DELIVERY_THRESHOLD = 500; // free delivery above this subtotal
 export const DELIVERY_FEE = 100;
 export const TAX_RATE = 0.08; // 8
+export const MAX_ADDRESSES_PER_USER = 10; // prevent address spam
