@@ -12,6 +12,7 @@ import {
 	REGISTER_WINDOW_MS,
 } from "../constants/authConstants.js";
 import { checkRateLimit } from "../utils/rateLimiter.js";
+import { normalizeEmail } from "../constants/utilities.js";
 
 // ---------------------------------------------------------------------------
 // Startup guard — fail loud if JWT_SECRET is missing or too short.
@@ -28,16 +29,6 @@ const generateToken = (id: string): string => {
 	return jwt.sign({ id }, JWT_SECRET, {
 		expiresIn: AUTH_TOKEN_EXPIRY,
 	});
-};
-
-// Normalizing Email
-const normalizeEmail = (raw: unknown): string | null => {
-	if (typeof raw !== "string") {
-		return null;
-	}
-
-	const trimmed = raw.trim().toLowerCase();
-	return trimmed.length > 0 ? trimmed : null;
 };
 
 // Check is "USER" isAdmin from the DB user record.
