@@ -10,14 +10,11 @@ import {
 	LOGIN_WINDOW_MS,
 	REGISTER_MAX_ATTEMPTS,
 	REGISTER_WINDOW_MS,
-} from "../constants/authConstants.js";
+} from "../utils/authConstants.js";
 import { checkRateLimit } from "../utils/rateLimiter.js";
-import { normalizeEmail } from "../constants/utilities.js";
+import { DUMMY_HASH, normalizeEmail } from "../utils/helper.js";
 
-// ---------------------------------------------------------------------------
-// Startup guard — fail loud if JWT_SECRET is missing or too short.
-// This runs once when the module is first imported, not per-request.
-// ---------------------------------------------------------------------------
+// * ─── Helpers ──────────────────────────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
 	throw new Error(
@@ -60,8 +57,7 @@ const getClientIP = (req: Request): string => {
 	return req.socket.remoteAddress ?? "unknown";
 };
 
-// Register
-// POST - /api/auth/register
+// * ─── POST /api/auth/register ───────────────────────────────────────────────
 export const register = async (req: Request, res: Response) => {
 	try {
 		const IP = getClientIP(req);
@@ -167,8 +163,7 @@ export const register = async (req: Request, res: Response) => {
 	}
 };
 
-// Login
-// POST - /api/auth/login
+// * ─── POST /api/auth/login ───────────────────────────────────────────────
 export const login = async (req: Request, res: Response) => {
 	try {
 		const IP = getClientIP(req);
@@ -218,19 +213,13 @@ export const login = async (req: Request, res: Response) => {
 				id: true,
 				name: true,
 				email: true,
-				password: true, // needed for comparison only — stripped before response
+				password: true,
 				isAdmin: true,
 				createdAt: true,
 				addresses: true,
 			},
 		});
 
-		// — Verify credentials —
-		// IMPORTANT: always run bcrypt.compare even when the user doesn't exist.
-		// Skipping it when user===null causes a measurable timing difference that
-		// reveals whether an email is registered (user enumeration attack).
-		const DUMMY_HASH =
-			"$2b$12$invalidhashpaddingtomatchbcryptlengthandpreventearlyexit";
 		const passwordToCompare = user?.password ?? DUMMY_HASH;
 		const isMatch = await bcrypt.compare(password, passwordToCompare);
 

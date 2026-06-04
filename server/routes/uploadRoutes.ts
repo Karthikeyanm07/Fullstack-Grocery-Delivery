@@ -6,7 +6,7 @@ import { checkRateLimit } from "../utils/rateLimiter.js";
 import {
 	UPLOAD_MAX_ATTEMPTS,
 	UPLOAD_WINDOW_MS,
-} from "../constants/authConstants.js";
+} from "../utils/authConstants.js";
 
 const uploadRouter = express.Router();
 

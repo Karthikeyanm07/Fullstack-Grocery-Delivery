@@ -6,10 +6,11 @@ import {
 	AUTH_TOKEN_EXPIRY,
 	PARTNER_LOGIN_MAX_ATTEMPTS,
 	PARTNER_LOGIN_WINDOW_MS,
-} from "../constants/authConstants.js";
+} from "../utils/authConstants.js";
 import { checkRateLimit } from "../utils/rateLimiter.js";
-import { getParamId, normalizeEmail } from "../constants/utilities.js";
+import { DUMMY_HASH, getParamId, normalizeEmail } from "../utils/helper.js";
 import { OrderStatus, Prisma } from "../generated/prisma/client.js";
+import { clearPartnerCookie, sendPartnerCookie } from "../utils/authCookie.js";
 
 // * ─── Helpers ──────────────────────────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -23,33 +24,13 @@ const generatePartnerToken = (id: string): string =>
 		expiresIn: AUTH_TOKEN_EXPIRY,
 	});
 
-const sendPartnerCookie = (res: Response, token: string): void => {
-	res.cookie("partnerToken", token, {
-		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
-		sameSite: "strict",
-		path: "/",
-		maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-	});
-};
-
-const clearPartnerCookie = (res: Response): void => {
-	res.cookie("partnerToken", "", {
-		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
-		sameSite: "strict",
-		path: "/",
-		expires: new Date(0),
-	});
-};
-
 // Build a safe partner object — strips password before any response
 const safePartner = (partner: { password: string; [key: string]: unknown }) => {
 	const { password: _pw, ...rest } = partner;
 	return rest;
 };
 
-// * ─── POST api/delivery/login ───────────────────────────────────────────────────────
+// * ─── POST api/delivery/login ───────────────────────────────────────────────
 export const loginPartner = async (req: Request, res: Response) => {
 	try {
 		const ip =
@@ -98,8 +79,6 @@ export const loginPartner = async (req: Request, res: Response) => {
 			where: { email: normalizedEmail },
 		});
 
-		const DUMMY_HASH =
-			"$2b$12$invalidhashpaddingtomatchbcryptlengthandpreventearlyexit";
 		const isMatch = await bcrypt.compare(
 			password,
 			partner?.password ?? DUMMY_HASH,
@@ -113,8 +92,6 @@ export const loginPartner = async (req: Request, res: Response) => {
 			});
 		}
 
-		// Check active status AFTER credential check — don't reveal account exists
-		// before verifying the password
 		if (!partner.isActive) {
 			return res.status(403).json({
 				success: false,
@@ -142,7 +119,7 @@ export const loginPartner = async (req: Request, res: Response) => {
 	}
 };
 
-// ─── POST /api/delivery/logout ────────────────────────────────────────────────
+// * ─── POST /api/delivery/logout ─────────────────────────────────────────────
 export const logoutPartner = (_req: Request, res: Response) => {
 	clearPartnerCookie(res);
 	return res.status(200).json({
@@ -151,8 +128,7 @@ export const logoutPartner = (_req: Request, res: Response) => {
 	});
 };
 
-// Get assigned deliveries
-// * ─── GET api/delivery/my-deliveries ───────────────────────────────────────────────────────
+// * ─── GET api/delivery/my-deliveries ─────────────────────────────────────────
 export const getMyDeliveries = async (req: Request, res: Response) => {
 	try {
 		const { status } = req.query;
@@ -197,8 +173,7 @@ export const getMyDeliveries = async (req: Request, res: Response) => {
 	}
 };
 
-// Get single delivery detail
-// * ─── GET api/delivery/my-deliveries/:id ───────────────────────────────────────────────────────
+// * ─── GET api/delivery/my-deliveries/:id ───────────────────────────────────────
 export const getDeliveryDetail = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
@@ -239,8 +214,7 @@ export const getDeliveryDetail = async (req: Request, res: Response) => {
 	}
 };
 
-// Complete delivery with OTP
-// * ─── GET api/delivery/my-deliveries/:id/complete ─────────────────────────
+// * ─── PUT api/delivery/my-deliveries/:id/complete ─────────────────────────
 export const completeDelivery = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
@@ -284,7 +258,7 @@ export const completeDelivery = async (req: Request, res: Response) => {
 			});
 		}
 
-		// Wrong OTP is a client error — 400, not 500
+		// Wrong OTP is a client error — 400
 		if (order.deliveryOtp !== otp) {
 			return res.status(400).json({
 				success: false,
@@ -327,8 +301,7 @@ export const completeDelivery = async (req: Request, res: Response) => {
 	}
 };
 
-// Cancel delivery
-// * ─── GET api/delivery/my-deliveries/:id/cancel ───────────────────────────────────────────────────────
+// * ─── PUT api/delivery/my-deliveries/:id/cancel ───────────────────────────────────────────────────────
 export const cancelDelivery = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
@@ -402,8 +375,7 @@ export const cancelDelivery = async (req: Request, res: Response) => {
 	}
 };
 
-// Update order status
-// ─── PUT /api/delivery/my-deliveries/:id/status ───────────────────────────────
+// * ─── PUT /api/delivery/my-deliveries/:id/status ───────────────────────────────
 export const updateDeliveryStatus = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
@@ -417,9 +389,6 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
 
 		const { status } = req.body as { status?: unknown };
 
-		// Only Preparing and OutForDelivery are partner-settable statuses.
-		// Delivered is set via completeDelivery (requires OTP).
-		// Placed/Confirmed/Cancelled are set by admin or the cancel endpoint.
 		const allowedStatuses: OrderStatus[] = [
 			OrderStatus.Preparing,
 			OrderStatus.OutForDelivery,

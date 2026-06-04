@@ -6,21 +6,19 @@ import {
 	ORDER_CREATE_MAX_ATTEMPTS,
 	ORDER_CREATE_WINDOW_MS,
 	TAX_RATE,
-} from "../constants/authConstants.js";
+} from "../utils/authConstants.js";
 import { checkRateLimit } from "../utils/rateLimiter.js";
 import { OrderStatus, Prisma } from "../generated/prisma/client.js";
 import { inngest } from "../inngest/index.js";
-import { validStatuses } from "../constants/utilities.js";
+import { getParamId, validStatuses } from "../utils/helper.js";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// * ─── Types ─────────────────────────────────────────────────────────────
 
-// Shape the frontend sends per item
 interface OrderItemInput {
 	product: string; // product ID
 	quantity: number;
 }
 
-// Shape stored in the DB (JSON column)
 interface OrderItemRecord {
 	product: string;
 	name: string;
@@ -30,15 +28,7 @@ interface OrderItemRecord {
 	unit: string | null;
 }
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
-
-const getParamId = (req: Request): string | null => {
-	const { id } = req.params;
-	return typeof id === "string" && id.length > 0 ? id : null;
-};
-
-//Create Order
-// ─── POST /api/orders ──────────────────────────────────────────────────────
+// * ─── POST /api/orders ───────────────────────────────────────────────────
 export const createOrder = async (req: Request, res: Response) => {
 	try {
 		const rateLimit = await checkRateLimit({
@@ -105,9 +95,6 @@ export const createOrder = async (req: Request, res: Response) => {
 			}
 		}
 
-		// ── Fetch products from DB — never trust client-sent prices ────────────
-		// A client could send { price: 1 } for a ₹500 item. Always read price
-		// from the DB and ignore whatever the client sent.
 		const productIds = items.map((i) => i.product);
 		const products = await prisma.product.findMany({
 			where: { id: { in: productIds } },
@@ -116,7 +103,7 @@ export const createOrder = async (req: Request, res: Response) => {
 		const productMap: Record<string, (typeof products)[0]> = {};
 		products.forEach((p) => (productMap[p.id] = p));
 
-		// ── Stock check ─────────────────────────────────────────────────────────
+		// ── Stock check
 		for (const item of items) {
 			const product = productMap[item.product];
 
@@ -129,7 +116,6 @@ export const createOrder = async (req: Request, res: Response) => {
 			}
 
 			if ((product.stock ?? 0) < item.quantity) {
-				// 409 Conflict — product exists but can't fulfil the requested quantity
 				return res.status(409).json({
 					success: false,
 					code: "INSUFFICIENT_STOCK",
@@ -138,20 +124,19 @@ export const createOrder = async (req: Request, res: Response) => {
 			}
 		}
 
-		// ── Build order items using DB prices ───────────────────────────────────
 		const orderItems: OrderItemRecord[] = items.map((item) => {
 			const dbProduct = productMap[item.product];
 			return {
 				product: dbProduct.id,
 				name: dbProduct.name,
 				image: dbProduct.image,
-				price: dbProduct.price, // always from DB, never from client
+				price: dbProduct.price,
 				quantity: item.quantity,
 				unit: dbProduct.unit ?? null,
 			};
 		});
 
-		// ── Calculate totals ────────────────────────────────────────────────────
+		// ── Calculate totals
 		const subtotal =
 			Math.round(
 				orderItems.reduce(
@@ -164,11 +149,6 @@ export const createOrder = async (req: Request, res: Response) => {
 		const tax = Math.round(subtotal * TAX_RATE * 100) / 100; // e.g. 8%
 		const total = Math.round((subtotal + deliveryFee + tax) * 100) / 100;
 
-		// ── Prisma transaction — order creation + stock decrement ───────────────
-		// A transaction means ALL of these DB operations succeed together or
-		// ALL are rolled back. Without this, if stock decrement fails after
-		// the order is created, you have an order with no stock deducted.
-		// Also: we respond to the client AFTER the transaction, not before.
 		const order = await prisma.$transaction(async (tx) => {
 			const created = await tx.order.create({
 				data: {
@@ -190,7 +170,6 @@ export const createOrder = async (req: Request, res: Response) => {
 				},
 			});
 
-			// Decrement stock for every item inside the same transaction
 			for (const item of orderItems) {
 				await tx.product.update({
 					where: { id: item.product },
@@ -201,9 +180,6 @@ export const createOrder = async (req: Request, res: Response) => {
 			return created;
 		});
 
-		// ── Fire Inngest event for low-stock check ──────────────────────────────
-		// This runs in the background after the response is sent.
-		// One event per product — each triggers an independent check.
 		await Promise.all(
 			orderItems.map((item) =>
 				inngest.send({
@@ -233,8 +209,7 @@ export const createOrder = async (req: Request, res: Response) => {
 	}
 };
 
-// Get User's orders
-// ─── GET /api/orders ──────────────────────────────────────────────────────
+// * ─── GET /api/orders ───────────────────────────────────────────────────
 export const getUserOrders = async (req: Request, res: Response) => {
 	try {
 		const { status } = req.query;
@@ -243,8 +218,6 @@ export const getUserOrders = async (req: Request, res: Response) => {
 			userId: req.user!.id,
 			NOT: [{ paymentMethod: "card", isPaid: false }],
 		};
-
-		// Validate status against the enum before querying
 
 		if (status && status !== "all") {
 			if (!validStatuses.includes(status as string)) {
@@ -279,8 +252,7 @@ export const getUserOrders = async (req: Request, res: Response) => {
 	}
 };
 
-// get single order
-// ─── GET /api/orders/:id ──────────────────────────────────────────────────────
+// * ─── GET /api/orders/:id ───────────────────────────────────────────────────
 export const getOrder = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
@@ -329,8 +301,7 @@ export const getOrder = async (req: Request, res: Response) => {
 	}
 };
 
-// Update order status (admin)
-// ─── PUT /api/orders/:id/status ──────────────────────────────────────────────────────
+// * ─── PUT /api/orders/:id/status ───────────────────────────────────────────────────
 export const updateOrderStatus = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
@@ -393,8 +364,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 	}
 };
 
-// Get all orders (admin)
-// ─── GET /api/orders/all ──────────────────────────────────────────────────────
+// * ─── GET /api/orders/all ───────────────────────────────────────────────────
 export const getAllOrders = async (req: Request, res: Response) => {
 	try {
 		const orders = await prisma.order.findMany({
@@ -422,8 +392,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
 	}
 };
 
-// Get Order Location
-// ─── GET /api/orders/:id/location ──────────────────────────────────────────────────────
+// * ─── GET /api/orders/:id/location ───────────────────────────────────────────────────
 export const getOrderLocation = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
