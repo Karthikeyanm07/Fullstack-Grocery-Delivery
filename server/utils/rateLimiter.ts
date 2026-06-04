@@ -11,16 +11,6 @@ interface RateLimitResult {
 	retryAfterMS: number; //* 0 when allowed
 }
 
-/**
- * DB-backed rate limiter.
- *
- * Strategy:
- *  1. Delete any expired record for this key (resets the window cleanly).
- *  2. If no record exists → first attempt, create it and allow.
- *  3. If count >= max → block and return time remaining.
- *  4. Otherwise → increment and allow.
- */
-
 export const checkRateLimit = async ({
 	key,
 	maxAttempts,

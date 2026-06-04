@@ -4,15 +4,15 @@ import { checkRateLimit } from "../utils/rateLimiter.js";
 import {
 	PRODUCT_WRITE_MAX_ATTEMPTS,
 	PRODUCT_WRITE_WINDOW_MS,
-} from "../constants/authConstants.js";
+} from "../utils/authConstants.js";
 import {
 	CreateProductSchema,
 	QuerySchema,
 	UpdateProductSchema,
-} from "../zod/schemas.js";
+} from "../utils/schemas.js";
 import { Prisma } from "../generated/prisma/client.js";
-// ─── Shared helpers ───────────────────────────────────────────────────────────
-
+import { getParamId } from "../utils/helper.js";
+// * ─── helpers ───────────────────────────────────────────────────────────
 // Discount is a derived value — computed here rather than stored in the DB
 const attachDiscount = <
 	T extends { price: number; originalPrice?: number | null },
@@ -30,9 +30,6 @@ const attachDiscount = <
 	return { ...product, discount };
 };
 
-// Rate limit helper for admin write operations — keyed by user ID, not IP.
-// Admins are known users, so per-ID limiting is more accurate than per-IP
-// (which can be shared across an office network).
 const checkProductWriteLimit = async (userId: string) => {
 	return checkRateLimit({
 		key: `product-write:${userId}`,
@@ -41,13 +38,7 @@ const checkProductWriteLimit = async (userId: string) => {
 	});
 };
 
-// Extracts and validates req.params.id — returns null if invalid
-const getParamId = (req: Request): string | null => {
-	const { id } = req.params;
-	return typeof id === "string" && id.length > 0 ? id : null;
-};
-
-// ─── GET /api/products/flash-deals ───────────────────────────────────────────
+// * ─── GET /api/products/flash-deals ───────────────────────────────────────────
 export const getFlashDeals = async (_req: Request, res: Response) => {
 	try {
 		const products = await prisma.product.findMany({
@@ -73,7 +64,7 @@ export const getFlashDeals = async (_req: Request, res: Response) => {
 	}
 };
 
-// ─── GET /api/products ───────────────────────────────────────────────────────
+// * ─── GET /api/products ───────────────────────────────────────────────────────
 export const getProducts = async (req: Request, res: Response) => {
 	try {
 		const parsed = QuerySchema.safeParse(req.query);
@@ -128,7 +119,7 @@ export const getProducts = async (req: Request, res: Response) => {
 	}
 };
 
-// ─── GET /api/products/:id ───────────────────────────────────────────────────
+// * ─── GET /api/products/:id ───────────────────────────────────────────────────
 export const getProduct = async (req: Request, res: Response) => {
 	try {
 		const product = await prisma.product.findUnique({
@@ -157,7 +148,7 @@ export const getProduct = async (req: Request, res: Response) => {
 	}
 };
 
-// ─── POST /api/products ──────────────────────────────────────────────────────
+// * ─── POST /api/products ──────────────────────────────────────────────────────
 export const createProduct = async (req: Request, res: Response) => {
 	try {
 		const rateLimit = await checkProductWriteLimit(req.user!.id);
@@ -196,8 +187,7 @@ export const createProduct = async (req: Request, res: Response) => {
 		});
 	}
 };
-
-// PUT /api/products/:id
+// * ─── PUT /api/products/:id ───────────────────────────────────────────────────
 export const updateProduct = async (req: Request, res: Response) => {
 	try {
 		const rateLimit = await checkProductWriteLimit(req.user!.id);
@@ -260,7 +250,7 @@ export const updateProduct = async (req: Request, res: Response) => {
 	}
 };
 
-// DELETE /api/products/:id
+// * ─── DELETE /api/products/:id ───────────────────────────────────────────────────
 export const deleteProduct = async (req: Request, res: Response) => {
 	try {
 		const rateLimit = await checkProductWriteLimit(req.user!.id);

@@ -1,9 +1,9 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { prisma } from "../config/prisma.js";
-import { BCRYPT_ROUNDS } from "../constants/authConstants.js";
-import { CreatePartnerSchema, UpdatePartnerSchema } from "../zod/schemas.js";
-import { getParamId, normalizeEmail } from "../constants/utilities.js";
+import { BCRYPT_ROUNDS } from "../utils/authConstants.js";
+import { CreatePartnerSchema, UpdatePartnerSchema } from "../utils/schemas.js";
+import { getParamId, normalizeEmail } from "../utils/helper.js";
 import { OrderStatus, Prisma } from "../generated/prisma/client.js";
 
 // * ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -5,15 +5,12 @@ import {
 	ADDRESS_WRITE_MAX_ATTEMPTS,
 	ADDRESS_WRITE_WINDOW_MS,
 	MAX_ADDRESSES_PER_USER,
-} from "../constants/authConstants.js";
-import { AddressSchema, UpdateAddressSchema } from "../zod/schemas.js";
-import { getParamId } from "../constants/utilities.js";
+} from "../utils/authConstants.js";
+import { AddressSchema, UpdateAddressSchema } from "../utils/schemas.js";
+import { getParamId } from "../utils/helper.js";
 import { Prisma } from "../generated/prisma/client.js";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-// Single helper to rate-limit all address write operations (add/update/delete).
-// Keyed per user ID — 20 mutations per hour is generous for real use
-// but stops any automated abuse.
+// * ─── Helpers ──────────────────────────────────────────────────────────────────
 const checkAddressWriteLimit = (userId: string) =>
 	checkRateLimit({
 		key: `address-write:${userId}`,
@@ -21,8 +18,6 @@ const checkAddressWriteLimit = (userId: string) =>
 		windowMS: ADDRESS_WRITE_WINDOW_MS,
 	});
 
-// Re-fetch and return the full address list after any mutation.
-// Centralized here so all handlers stay consistent.
 const fetchUserAddresses = (userId: string) =>
 	prisma.address.findMany({
 		where: { userId },
@@ -88,9 +83,6 @@ export const addAddress = async (req: Request, res: Response) => {
 
 		const makeDefault = existingCount === 0 ? true : isDefault;
 
-		// ── Transaction: unset old default + create new address atomically ──────
-		// Without a transaction, if `create` throws after `updateMany` runs,
-		// all existing addresses lose their default flag permanently.
 		const newAddress = await prisma.$transaction(async (tx) => {
 			if (makeDefault) {
 				await tx.address.updateMany({
@@ -134,7 +126,6 @@ export const addAddress = async (req: Request, res: Response) => {
 // * ─── PUT /api/addresses/:id ───────────────────────────────────────────────────
 export const updateAddress = async (req: Request, res: Response) => {
 	try {
-		// ── Rate limit ──────────────────────────────────────────────────────────
 		const rateLimit = await checkAddressWriteLimit(req.user!.id);
 		if (!rateLimit.allowed) {
 			return res.status(429).json({
@@ -163,9 +154,6 @@ export const updateAddress = async (req: Request, res: Response) => {
 			});
 		}
 
-		// ── Ownership check ─────────────────────────────────────────────────────
-		// Without this, user A could update user B's address by guessing the ID.
-		// We check userId matches before allowing any write.
 		const existing = await prisma.address.findUnique({ where: { id } });
 
 		if (!existing) {
@@ -177,7 +165,6 @@ export const updateAddress = async (req: Request, res: Response) => {
 		}
 
 		if (existing.userId !== req.user!.id) {
-			// Return 404 not 403 — don't confirm the address exists to other users
 			return res.status(404).json({
 				success: false,
 				code: "ADDRESS_NOT_FOUND",
@@ -187,7 +174,6 @@ export const updateAddress = async (req: Request, res: Response) => {
 
 		const { isDefault, ...rest } = parsed.data;
 
-		// ── Transaction: unset old default + update atomically ──────────────────
 		const updated = await prisma.$transaction(async (tx) => {
 			if (isDefault === true) {
 				await tx.address.updateMany({
@@ -222,7 +208,7 @@ export const updateAddress = async (req: Request, res: Response) => {
 	}
 };
 
-// ─── DELETE /api/addresses/:id ────────────────────────────────────────────────
+// * ─── DELETE /api/addresses/:id ───────────────────────────────────────────────────────
 export const deleteAddress = async (req: Request, res: Response) => {
 	try {
 		// ── Rate limit ──────────────────────────────────────────────────────────
@@ -244,9 +230,7 @@ export const deleteAddress = async (req: Request, res: Response) => {
 			});
 		}
 
-		// ── Ownership check ─────────────────────────────────────────────────────
 		const existing = await prisma.address.findUnique({ where: { id } });
-
 		if (!existing) {
 			return res.status(404).json({
 				success: false,
@@ -265,8 +249,6 @@ export const deleteAddress = async (req: Request, res: Response) => {
 
 		await prisma.address.delete({ where: { id } });
 
-		// ── If deleted address was default, promote the oldest remaining ────────
-		// Without this, the user has no default address after deletion.
 		if (existing.isDefault) {
 			const next = await prisma.address.findFirst({
 				where: { userId: req.user!.id },

@@ -14,7 +14,6 @@ export const getParamId = (req: Request): string | null => {
 	return typeof id === "string" && id.length > 0 ? id : null;
 };
 
-// Normalizing Email
 export const normalizeEmail = (raw: unknown): string | null => {
 	if (typeof raw !== "string") {
 		return null;
@@ -23,3 +22,6 @@ export const normalizeEmail = (raw: unknown): string | null => {
 	const trimmed = raw.trim().toLowerCase();
 	return trimmed.length > 0 ? trimmed : null;
 };
+
+export const DUMMY_HASH =
+	"$2b$12$invalidhashpaddingtomatchbcryptlengthandpreventearlyexit";
