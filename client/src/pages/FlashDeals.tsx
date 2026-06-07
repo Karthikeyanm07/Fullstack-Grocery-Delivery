@@ -1,19 +1,27 @@
 import { useEffect, useState } from "react";
 import type { Product } from "../types/index.ts";
-import { dummyProducts } from "../assets/assets.ts";
 import { Zap } from "lucide-react";
 import Loading from "../components/Loading.tsx";
 import ProductCard from "../components/ProductCard.tsx";
+import api from "../config/api.ts";
+import toast from "react-hot-toast";
 
 const FlashDeals = () => {
 	const [products, setProducts] = useState<Product[]>([]);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		setProducts(dummyProducts.filter((p: any) => p.stock > 0));
-		setTimeout(() => {
-			setLoading(false);
-		}, 1000);
+		const fetchFlashDeals = async () => {
+			try {
+				const response = await api.get("/products/flash-deals");
+				setProducts(response.products);
+			} catch (error: any) {
+				toast.error(error.response?.data.message || error?.message);
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchFlashDeals();
 	}, []);
 	return (
 		<div className="min-h-screen bg-app-cream">
@@ -51,7 +59,7 @@ const FlashDeals = () => {
 							(product) =>
 								product.stock > 0 && (
 									<ProductCard
-										key={product._id}
+										key={product.id}
 										product={product}
 									/>
 								),

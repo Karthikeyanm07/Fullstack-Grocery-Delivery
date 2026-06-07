@@ -1,7 +1,7 @@
 export const AUTH_TOKEN_EXPIRY = "30d";
 export const AUTH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
 
-export const LOGIN_MAX_ATTEMPTS = 5;
+export const LOGIN_MAX_ATTEMPTS = 10;
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 export const REGISTER_MAX_ATTEMPTS = 10;
@@ -21,6 +21,12 @@ export const ADDRESS_WRITE_WINDOW_MS = 60 * 60 * 1000;
 
 export const PARTNER_LOGIN_MAX_ATTEMPTS = 5;
 export const PARTNER_LOGIN_WINDOW_MS = 15 * 60 * 1000; 
+
+export const RESET_TOKEN_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+export const FORGOT_PASSWORD_MAX_ATTEMPTS = 5;
+export const FORGOT_PASSWORD_WINDOW_MS = 60 * 60 * 1000;
+export const RESET_PASSWORD_MAX_ATTEMPTS = 5;
+export const RESET_PASSWORD_WINDOW_MS = 60 * 60 * 1000;
 
 // bcrypt
 export const BCRYPT_ROUNDS = 12;

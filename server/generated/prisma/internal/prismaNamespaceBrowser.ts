@@ -56,7 +56,8 @@ export const ModelName = {
   Product: 'Product',
   Order: 'Order',
   DeliveryPartner: 'DeliveryPartner',
-  RateLimit: 'RateLimit'
+  RateLimit: 'RateLimit',
+  PasswordReset: 'PasswordReset'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -94,7 +95,10 @@ export const AddressScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   label: 'label',
+  name: 'name',
+  phone: 'phone',
   address: 'address',
+  landmark: 'landmark',
   city: 'city',
   state: 'state',
   zip: 'zip',
@@ -175,6 +179,17 @@ export const RateLimitScalarFieldEnum = {
 } as const
 
 export type RateLimitScalarFieldEnum = (typeof RateLimitScalarFieldEnum)[keyof typeof RateLimitScalarFieldEnum]
+
+
+export const PasswordResetScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  tokenHash: 'tokenHash',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type PasswordResetScalarFieldEnum = (typeof PasswordResetScalarFieldEnum)[keyof typeof PasswordResetScalarFieldEnum]
 
 
 export const SortOrder = {

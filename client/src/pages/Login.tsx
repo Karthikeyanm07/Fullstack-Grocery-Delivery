@@ -8,6 +8,8 @@ import {
 	MailIcon,
 	UserIcon,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext.tsx";
+import toast from "react-hot-toast";
 
 const Login = () => {
 	const [isLoginState, setIsLoginState] = useState(true);
@@ -16,12 +18,25 @@ const Login = () => {
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
 
-	const handleSubmit = (e: React.SubmitEvent) => {
+	const { login, register } = useAuth();
+
+	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		setLoading(true);
 
-		setTimeout(() => (window.location.href = "/"), 1000);
+		try {
+			if (isLoginState) {
+				await login(email, password);
+			} else {
+				await register(name, email, password);
+			}
+		} catch (error: any) {
+			toast.error(error.response?.data.message || error?.message);
+		} finally {
+			setLoading(false);
+		}
 	};
+
 	return (
 		<div className="min-h-screen flex">
 			{/* Left side */}
@@ -139,6 +154,15 @@ const Login = () => {
 								"Sign up"
 							)}
 						</button>
+						{isLoginState && (
+							<Link
+								to="/forgot-password"
+								className="flex-center underline text-sm text-app-text-light 
+                    				hover:text-app-green transition-colors"
+							>
+								Forgot password?
+							</Link>
+						)}
 					</form>
 				</div>
 			</div>
