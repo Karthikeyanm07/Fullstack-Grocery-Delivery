@@ -71,3 +71,8 @@ export type DeliveryPartner = Prisma.DeliveryPartnerModel
  * 
  */
 export type RateLimit = Prisma.RateLimitModel
+/**
+ * Model PasswordReset
+ * 
+ */
+export type PasswordReset = Prisma.PasswordResetModel

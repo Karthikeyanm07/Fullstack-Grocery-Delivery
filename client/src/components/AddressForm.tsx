@@ -1,4 +1,5 @@
 import { XIcon } from "lucide-react";
+import { INDIAN_STATES } from "../utils/states.ts";
 
 const AddressForm = ({
 	handleSubmit,
@@ -18,7 +19,7 @@ const AddressForm = ({
 				onClick={resetForm}
 			>
 				<form
-					className="bg-white rounded-2xl p-6 w-full max-w-lg animate-fade-in"
+					className="bg-white rounded-2xl p-6 w-full max-w-lg animate-fade-in max-h-[90vh] overflow-y-auto"
 					onClick={(e) => e.stopPropagation()}
 					onSubmit={handleSubmit}
 				>
@@ -38,18 +39,48 @@ const AddressForm = ({
 
 					{/* Form Fields */}
 					<div className="space-y-4">
+						<div className="grid grid-cols-2 gap-3">
+							<div>
+								<label className="block text-sm font-medium text-app-green mb-1.5">
+									Label
+								</label>
+								<input
+									type="text"
+									placeholder="Home, Work, etc."
+									required
+									className="w-full px-2 py-2.5 text-sm rounded-xl border border-app-border focus:border-app-green outline-none"
+									value={form.label}
+									onChange={(e) =>
+										setForm({ ...form, label: e.target.value })
+									}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium text-app-green mb-1.5">
+									Name
+								</label>
+								<input
+									type="text"
+									placeholder="Receiver name"
+									className="w-full px-2 py-2.5 text-sm rounded-xl border border-app-border focus:border-app-green outline-none"
+									value={form.name}
+									onChange={(e) =>
+										setForm({ ...form, name: e.target.value })
+									}
+								/>
+							</div>
+						</div>
 						<div>
 							<label className="block text-sm font-medium text-app-green mb-1.5">
-								Label
+								Phone Number
 							</label>
 							<input
-								type="text"
-								placeholder="Home, Work, etc."
-								required
+								type="tel"
+								placeholder="Phone number"
 								className="w-full px-2 py-2.5 text-sm rounded-xl border border-app-border focus:border-app-green outline-none"
-								value={form.label}
+								value={form.phone}
 								onChange={(e) =>
-									setForm({ ...form, label: e.target.value })
+									setForm({ ...form, phone: e.target.value })
 								}
 							/>
 						</div>
@@ -67,6 +98,20 @@ const AddressForm = ({
 										...form,
 										address: e.target.value,
 									})
+								}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium text-app-green mb-1.5">
+								Landmark
+							</label>
+							<input
+								type="text"
+								placeholder="Nearby landmark (optional)"
+								className="w-full px-2 py-2.5 text-sm rounded-xl border border-app-border focus:border-app-green outline-none"
+								value={form.landmark}
+								onChange={(e) =>
+									setForm({ ...form, landmark: e.target.value })
 								}
 							/>
 						</div>
@@ -92,10 +137,9 @@ const AddressForm = ({
 								<label className="block text-sm font-medium text-app-green mb-1.5">
 									State
 								</label>
-								<input
-									type="text"
+								<select
 									required
-									className="w-full px-2 py-2.5 text-sm rounded-xl border border-app-border focus:border-app-green outline-none"
+									className="w-full px-2 py-2.5 text-sm rounded-xl border border-app-border focus:border-app-green outline-none bg-white"
 									value={form.state}
 									onChange={(e) =>
 										setForm({
@@ -103,7 +147,14 @@ const AddressForm = ({
 											state: e.target.value,
 										})
 									}
-								/>
+								>
+									<option value="">Select state</option>
+									{INDIAN_STATES.map((state) => (
+										<option key={state} value={state}>
+											{state}
+										</option>
+									))}
+								</select>
 							</div>
 						</div>
 						<div className="grid grid-cols-2 gap-3">

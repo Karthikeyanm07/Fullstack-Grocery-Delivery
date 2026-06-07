@@ -180,7 +180,7 @@ export const getDeliveryDetail = async (req: Request, res: Response) => {
 		if (!id) {
 			return res.status(400).json({
 				success: false,
-				code: "INVALID_ID",
+				code: "INVALIDid",
 				message: "Invalid delivery ID.",
 			});
 		}
@@ -221,7 +221,7 @@ export const completeDelivery = async (req: Request, res: Response) => {
 		if (!id) {
 			return res.status(400).json({
 				success: false,
-				code: "INVALID_ID",
+				code: "INVALIDid",
 				message: "Invalid delivery ID.",
 			});
 		}
@@ -308,7 +308,7 @@ export const cancelDelivery = async (req: Request, res: Response) => {
 		if (!id) {
 			return res.status(400).json({
 				success: false,
-				code: "INVALID_ID",
+				code: "INVALIDid",
 				message: "Invalid delivery ID.",
 			});
 		}
@@ -382,7 +382,7 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
 		if (!id) {
 			return res.status(400).json({
 				success: false,
-				code: "INVALID_ID",
+				code: "INVALIDid",
 				message: "Invalid delivery ID.",
 			});
 		}
@@ -464,7 +464,7 @@ export const updateLocation = async (req: Request, res: Response) => {
 		if (!id) {
 			return res.status(400).json({
 				success: false,
-				code: "INVALID_ID",
+				code: "INVALIDid",
 				message: "Invalid delivery ID.",
 			});
 		}

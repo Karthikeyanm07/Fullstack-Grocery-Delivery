@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import type { Product } from "../types/index.ts";
 import { Link, useSearchParams } from "react-router-dom";
-import { dummyProducts } from "../assets/assets.ts";
 import { Home, Search } from "lucide-react";
 import Loading from "../components/Loading.tsx";
 import ProductCard from "../components/ProductCard.tsx";
+import api from "../config/api.ts";
+import toast from "react-hot-toast";
 
 const SearchResults = () => {
 	const [products, setProducts] = useState<Product[]>([]);
@@ -17,15 +18,20 @@ const SearchResults = () => {
 		if (!query) {
 			return;
 		}
-
 		setLoading(true);
-		setProducts(
-			dummyProducts.filter((p: any) =>
-				p.name.toLowerCase().includes(query.toLowerCase()),
-			),
-		);
-
-		setLoading(false);
+		const fetchSearchResults = async () => {
+			try {
+				const response = await api.get(
+					`/products?search=${encodeURIComponent(query)}`,
+				);
+				setProducts(response.products);
+			} catch (error: any) {
+				toast.error(error.response?.data.message || error?.message);
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchSearchResults();
 	}, [query]);
 	return (
 		<div className="min-h-screen bg-app-cream">
@@ -79,7 +85,7 @@ const SearchResults = () => {
 				) : (
 					<div className="grid grid-cols-2 sm:grid-cols-3 g:grid-cols-4 gap-4">
 						{products.map((product) => (
-							<ProductCard key={product._id} product={product} />
+							<ProductCard key={product.id} product={product} />
 						))}
 					</div>
 				)}

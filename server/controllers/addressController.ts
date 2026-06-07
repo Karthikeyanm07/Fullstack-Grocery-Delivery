@@ -139,7 +139,7 @@ export const updateAddress = async (req: Request, res: Response) => {
 		if (!id) {
 			return res.status(400).json({
 				success: false,
-				code: "INVALID_ID",
+				code: "INVALIDid",
 				message: "Invalid address ID.",
 			});
 		}
@@ -225,7 +225,7 @@ export const deleteAddress = async (req: Request, res: Response) => {
 		if (!id) {
 			return res.status(400).json({
 				success: false,
-				code: "INVALID_ID",
+				code: "INVALIDid",
 				message: "Invalid address ID.",
 			});
 		}

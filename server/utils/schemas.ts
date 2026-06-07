@@ -27,7 +27,10 @@ export const QuerySchema = z.object({
 
 export const AddressSchema = z.object({
 	label: z.string().min(1).max(50).trim(),
+	name: z.string().min(1).max(100).trim().optional().default(""),
+	phone: z.string().max(20).trim().optional().default(""),
 	address: z.string().min(5).max(200).trim(),
+	landmark: z.string().max(100).trim().optional().default(""),
 	city: z.string().min(1).max(100).trim(),
 	state: z.string().min(1).max(100).trim(),
 	zip: z.string().min(1).max(20).trim(),

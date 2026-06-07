@@ -7,6 +7,8 @@ const isEmailConfigured = (): boolean =>
 			process.env.SENDER_EMAIL,
 	);
 
+export { isEmailConfigured };
+
 let transporter: Transporter | null = null;
 
 const getTransporter = (): Transporter => {

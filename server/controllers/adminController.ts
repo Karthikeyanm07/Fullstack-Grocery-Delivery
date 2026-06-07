@@ -175,7 +175,7 @@ export const updateDeliveryPartner = async (req: Request, res: Response) => {
 		if (!id) {
 			return res.status(400).json({
 				success: false,
-				code: "INVALID_ID",
+				code: "INVALIDid",
 				message: "Invalid partner ID.",
 			});
 		}
@@ -235,7 +235,7 @@ export const assignDeliveryPartner = async (req: Request, res: Response) => {
 		if (!orderId) {
 			return res.status(400).json({
 				success: false,
-				code: "INVALID_ID",
+				code: "INVALIDid",
 				message: "Invalid order ID.",
 			});
 		}
@@ -244,7 +244,7 @@ export const assignDeliveryPartner = async (req: Request, res: Response) => {
 		if (!partnerId || typeof partnerId !== "string") {
 			return res.status(400).json({
 				success: false,
-				code: "MISSING_PARTNER_ID",
+				code: "MISSING_PARTNERid",
 				message: "partnerId is required.",
 			});
 		}

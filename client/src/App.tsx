@@ -21,6 +21,8 @@ import AdminDeliveryPartners from "./pages/admin/AdminDeliveryPartners.tsx";
 import DeliveryLogin from "./pages/delivery/DeliveryLogin.tsx";
 import DeliveryLayout from "./pages/delivery/DeliveryLayout.tsx";
 import DeliveryDashboard from "./pages/delivery/DeliveryDashboard.tsx";
+import ForgotPassword from "./pages/ForgotPassword.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 
 const App = () => {
 	return (
@@ -40,6 +42,8 @@ const App = () => {
 			<Routes>
 				{/* Auth pages (No -> Navbar/Footer) */}
 				<Route path="/login" element={<Login />} />
+				<Route path="/forgot-password" element={<ForgotPassword />} />
+				<Route path="/reset-password" element={<ResetPassword />} />
 
 				{/* Main Pages */}
 				<Route path="/" element={<AppLayout />}>
@@ -63,9 +67,15 @@ const App = () => {
 					<Route index element={<AdminDashboard />} />
 					<Route path="products" element={<AdminProducts />} />
 					<Route path="products/new" element={<AdminProductForm />} />
-					<Route path="products/:id/edit" element={<AdminProductForm />} />
+					<Route
+						path="products/:id/edit"
+						element={<AdminProductForm />}
+					/>
 					<Route path="orders" element={<AdminOrders />} />
-					<Route path="delivery-partners" element={<AdminDeliveryPartners />} />
+					<Route
+						path="delivery-partners"
+						element={<AdminDeliveryPartners />}
+					/>
 				</Route>
 
 				{/* Delivery Partner pages */}
