@@ -1,4 +1,4 @@
-import { DeliveryPartner } from "../../generated/prisma/client.ts";
+import { DeliveryPartner } from "../../generated/prisma/client.js";
 
 declare global {
 	namespace Express {

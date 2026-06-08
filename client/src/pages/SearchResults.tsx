@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import type { Product } from "../types/index.ts";
 import { Link, useSearchParams } from "react-router-dom";
 import { Home, Search } from "lucide-react";
-import Loading from "../components/Loading.tsx";
 import ProductCard from "../components/ProductCard.tsx";
 import api from "../config/api.ts";
 import toast from "react-hot-toast";
+import { ProductGridSkeleton } from "../components/Skeleton.tsx";
+import { getApiErrorMessage } from "../utils/apiError.ts";
 
 const SearchResults = () => {
 	const [products, setProducts] = useState<Product[]>([]);
@@ -16,6 +17,8 @@ const SearchResults = () => {
 
 	useEffect(() => {
 		if (!query) {
+			setProducts([]);
+			setLoading(false);
 			return;
 		}
 		setLoading(true);
@@ -26,7 +29,7 @@ const SearchResults = () => {
 				);
 				setProducts(response.products);
 			} catch (error: any) {
-				toast.error(error.response?.data.message || error?.message);
+				toast.error(getApiErrorMessage(error, "Search failed."));
 			} finally {
 				setLoading(false);
 			}
@@ -64,7 +67,7 @@ const SearchResults = () => {
 
 				{/* Search result products */}
 				{loading ? (
-					<Loading />
+					<ProductGridSkeleton />
 				) : products.length === 0 ? (
 					<div className="text-center py-20">
 						<Search className="size-16 text-app-border mx-auto mb-4" />

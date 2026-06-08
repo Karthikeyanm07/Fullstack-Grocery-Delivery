@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Order } from "../types/index.ts";
-import { dummyDashboardOrdersData } from "../assets/assets.ts";
 import Loading from "../components/Loading.tsx";
-import { ArrowLeftIcon, MapIcon, MapPinIcon, PhoneIcon } from "lucide-react";
+import { ArrowLeftIcon, MapPinIcon, PhoneIcon } from "lucide-react";
 import OrderOTP from "../components/OrderTracking/OrderOTP.tsx";
 import LiveMap from "../components/OrderTracking/LiveMap.tsx";
 import OrderTimeLine from "../components/OrderTracking/OrderTimeLine.tsx";
+import api from "../config/api.ts";
+import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../utils/apiError.ts";
 
 const OrderTracking = () => {
 	const { id } = useParams();
@@ -16,20 +18,49 @@ const OrderTracking = () => {
 	const [liveLocation, setLiveLocation] = useState<{
 		lat: number;
 		lng: number;
-	}>(null);
+	} | null>(null);
 
 	const currency = import.meta.env.VITE_CURRENCY_SYMBOL;
 
 	useEffect(() => {
-		setOrder(dummyDashboardOrdersData.find((o) => o.id === id) as any);
-		setLoading(false);
+		const fetchOrder = async () => {
+			try {
+				const response = await api.get(`/orders/${id}`);
+				setOrder(response.order);
+			} catch (error) {
+				toast.error(getApiErrorMessage(error, "Failed to fetch order."));
+				navigate("/orders");
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchOrder();
 	}, [id, navigate]);
+
+	useEffect(() => {
+		if (!id || !order || !["Confirmed", "Preparing", "OutForDelivery"].includes(order.status)) {
+			return;
+		}
+
+		const fetchLocation = async () => {
+			try {
+				const response = await api.get(`/orders/${id}/location`);
+				setLiveLocation(response.liveLocation);
+			} catch (_error) {
+			}
+		};
+
+		fetchLocation();
+		const intervalId = window.setInterval(fetchLocation, 15000);
+
+		return () => window.clearInterval(intervalId);
+	}, [id, order]);
 
 	if (loading) {
 		return <Loading />;
 	}
 	if (!order) {
-		null;
+		return null;
 	}
 	return (
 		<div className="min-h-screen mb-20 bg-app-cream">

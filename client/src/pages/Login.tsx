@@ -9,7 +9,6 @@ import {
 	UserIcon,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.tsx";
-import toast from "react-hot-toast";
 
 const Login = () => {
 	const [isLoginState, setIsLoginState] = useState(true);
@@ -30,8 +29,7 @@ const Login = () => {
 			} else {
 				await register(name, email, password);
 			}
-		} catch (error: any) {
-			toast.error(error.response?.data.message || error?.message);
+		} catch (_error) {
 		} finally {
 			setLoading(false);
 		}

@@ -1,16 +1,21 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "lucide-react";
-import { categoriesData, dummyProducts } from "../../assets/assets";
+import { categoriesData } from "../../assets/assets";
 import Loading from "../../components/Loading";
+import api from "../../config/api";
+import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 export default function AdminProductForm() {
 	const { id } = useParams();
+	const navigate = useNavigate();
 	const isEdit = Boolean(id);
 
 	const [loading, setLoading] = useState(isEdit);
 	const [saving, setSaving] = useState(false);
 	const [imageFile, setImageFile] = useState<File | null>(null);
+	const [previewUrl, setPreviewUrl] = useState("");
 
 	const [formData, setFormData] = useState({
 		name: "",
@@ -27,17 +32,85 @@ export default function AdminProductForm() {
 	useEffect(() => {
 		const fetchData = async () => {
 			if (isEdit) {
-				setFormData(
-					() => dummyProducts.find((p) => p.id === id) as any,
-				);
+				try {
+					const response = await api.get(`/products/${id}`);
+					const product = response.product;
+					setFormData({
+						name: product.name || "",
+						description: product.description || "",
+						price: String(product.price ?? ""),
+						originalPrice: product.originalPrice
+							? String(product.originalPrice)
+							: "",
+						image: product.image || "",
+						category: product.category || "",
+						unit: product.unit || "",
+						stock: String(product.stock ?? ""),
+						isOrganic: Boolean(product.isOrganic),
+					});
+				} catch (error) {
+					toast.error(getApiErrorMessage(error, "Failed to fetch product."));
+					navigate("/admin/products");
+				}
 			}
 			setLoading(false);
 		};
 		fetchData();
-	}, [id, isEdit]);
+	}, [id, isEdit, navigate]);
+
+	useEffect(() => {
+		if (!imageFile) {
+			setPreviewUrl("");
+			return;
+		}
+
+		const objectUrl = URL.createObjectURL(imageFile);
+		setPreviewUrl(objectUrl);
+
+		return () => URL.revokeObjectURL(objectUrl);
+	}, [imageFile]);
 
 	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
+		setSaving(true);
+		try {
+			let image = formData.image;
+			if (imageFile) {
+				const uploadFormData = new FormData();
+				uploadFormData.append("image", imageFile);
+				const uploaded = await api.post("/upload", uploadFormData, {
+					headers: { "Content-Type": "multipart/form-data" },
+				});
+				image = uploaded.url;
+			}
+
+			const payload = {
+				name: formData.name,
+				description: formData.description,
+				price: Number(formData.price),
+				...(formData.originalPrice && {
+					originalPrice: Number(formData.originalPrice),
+				}),
+				image,
+				category: formData.category,
+				unit: formData.unit,
+				stock: Number(formData.stock),
+				isOrganic: formData.isOrganic,
+			};
+
+			if (isEdit) {
+				await api.put(`/products/${id}`, payload);
+				toast.success("Product updated.");
+			} else {
+				await api.post("/products", payload);
+				toast.success("Product created.");
+			}
+			navigate("/admin/products");
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to save product."));
+		} finally {
+			setSaving(false);
+		}
 	};
 
 	return (
@@ -181,11 +254,7 @@ export default function AdminProductForm() {
 										<div className="size-16 rounded-lg border border-zinc-200 overflow-hidden shrink-0 bg-app-cream">
 											<img
 												src={
-													imageFile
-														? URL.createObjectURL(
-																imageFile,
-															)
-														: formData.image
+													previewUrl || formData.image
 												}
 												alt="Preview"
 												className="w-full h-full object-cover"

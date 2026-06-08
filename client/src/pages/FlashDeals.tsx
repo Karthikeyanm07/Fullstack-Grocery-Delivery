@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import type { Product } from "../types/index.ts";
 import { Zap } from "lucide-react";
-import Loading from "../components/Loading.tsx";
 import ProductCard from "../components/ProductCard.tsx";
 import api from "../config/api.ts";
 import toast from "react-hot-toast";
+import { ProductGridSkeleton } from "../components/Skeleton.tsx";
+import { getApiErrorMessage } from "../utils/apiError.ts";
 
 const FlashDeals = () => {
 	const [products, setProducts] = useState<Product[]>([]);
@@ -16,7 +17,7 @@ const FlashDeals = () => {
 				const response = await api.get("/products/flash-deals");
 				setProducts(response.products);
 			} catch (error: any) {
-				toast.error(error.response?.data.message || error?.message);
+				toast.error(getApiErrorMessage(error, "Failed to fetch deals."));
 			} finally {
 				setLoading(false);
 			}
@@ -42,7 +43,7 @@ const FlashDeals = () => {
 
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 				{loading ? (
-					<Loading />
+					<ProductGridSkeleton count={10} />
 				) : products.length === 0 ? (
 					<div className="text-center py-16">
 						<Zap className="size-16 text-app-border mx-auto mb-4" />

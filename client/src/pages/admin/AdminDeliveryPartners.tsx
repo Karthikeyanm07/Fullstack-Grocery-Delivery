@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { PlusIcon, XIcon, TruckIcon, PhoneIcon, MailIcon } from "lucide-react";
 import type { DeliveryPartner } from "../../types";
 import Loading from "../../components/Loading";
-import { dummyDeliveryPartnerData } from "../../assets/assets";
+import api from "../../config/api";
+import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 export default function AdminDeliveryPartners() {
 	const [partners, setPartners] = useState<DeliveryPartner[]>([]);
@@ -18,8 +20,14 @@ export default function AdminDeliveryPartners() {
 	});
 
 	const fetchPartners = async () => {
-		setPartners(dummyDeliveryPartnerData as any);
-		setTimeout(() => setLoading(false), 1000);
+		try {
+			const response = await api.get("/admin/delivery-partners");
+			setPartners(response.partners || []);
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to fetch partners."));
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	useEffect(() => {
@@ -28,10 +36,40 @@ export default function AdminDeliveryPartners() {
 
 	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
+		setSaving(true);
+		try {
+			const response = await api.post("/admin/delivery-partners", form);
+			setPartners((prev) => [response.partner, ...prev]);
+			toast.success("Delivery partner created.");
+			setShowForm(false);
+			setForm({
+				name: "",
+				email: "",
+				password: "",
+				phone: "",
+				vehicleType: "bike",
+			});
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to create partner."));
+		} finally {
+			setSaving(false);
+		}
 	};
 
 	const toggleActive = async (id: string, isActive: boolean) => {
-		console.log(id, isActive);
+		try {
+			const response = await api.put(`/admin/delivery-partners/${id}`, {
+				isActive: !isActive,
+			});
+			setPartners((prev) =>
+				prev.map((partner) =>
+					partner.id === id ? response.partner : partner,
+				),
+			);
+			toast.success(`Partner ${isActive ? "deactivated" : "activated"}.`);
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to update partner."));
+		}
 	};
 
 	if (loading) return <Loading />;
@@ -178,7 +216,7 @@ export default function AdminDeliveryPartners() {
 										<input
 											type="password"
 											required
-											minLength={6}
+											minLength={8}
 											value={form.password}
 											onChange={(e) =>
 												setForm({

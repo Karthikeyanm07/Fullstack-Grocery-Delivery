@@ -10,13 +10,14 @@ import type { User } from "../types";
 import { useNavigate } from "react-router-dom";
 import api from "../config/api";
 import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../utils/apiError";
 
 interface AuthContextType {
 	user: User | null;
 	loading: boolean;
 	login: (email: string, password: string) => Promise<void>;
 	register: (name: string, email: string, password: string) => Promise<void>;
-	logout: () => void;
+	logout: () => Promise<void>;
 	updateUser: (userData: Partial<User>) => void;
 }
 
@@ -56,7 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	// * ── Login ─────────────────────────────────────────────────────────────────
 	const login = async (email: string, password: string) => {
 		try {
-			const { user: userData } = await api.post("/auth/login", { email, password });
+			const { user: userData } = await api.post("/auth/login", {
+				email,
+				password,
+			});
 
 			setUser(userData);
 			localStorage.setItem("auth_user", JSON.stringify(userData));
@@ -64,10 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 			navigate("/");
 		} catch (error: any) {
-			toast.error(
-				error.response?.data?.message ??
-					"Login failed. Please try again.",
-			);
+			toast.error(getApiErrorMessage(error, "Login failed. Please try again."));
+			throw error;
 		}
 	};
 
@@ -87,9 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			navigate("/");
 		} catch (error: any) {
 			toast.error(
-				error.response?.data?.message ??
+				getApiErrorMessage(
+					error,
 					"Registration failed. Please try again.",
+				),
 			);
+			throw error;
 		}
 	};
 
@@ -97,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const logout = async () => {
 		try {
 			await api.post("/auth/logout");
-		} catch (error) {
+		} catch (_error) {
 		} finally {
 			setUser(null);
 			localStorage.removeItem("auth_user");

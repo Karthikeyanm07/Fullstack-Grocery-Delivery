@@ -11,6 +11,11 @@ import { checkRateLimit } from "../utils/rateLimiter.js";
 import { OrderStatus, Prisma } from "../generated/prisma/client.js";
 import { inngest } from "../inngest/index.js";
 import { getParamId, validStatuses } from "../utils/helper.js";
+import {
+	appendStatusHistory,
+	canTransitionOrderStatus,
+} from "../utils/order.js";
+import { sendInvalidId } from "../utils/request.js";
 
 // * ─── Types ─────────────────────────────────────────────────────────────
 
@@ -27,6 +32,46 @@ interface OrderItemRecord {
 	quantity: number;
 	unit: string | null;
 }
+
+const getStockItemsFromOrder = (items: unknown): OrderItemInput[] => {
+	if (!Array.isArray(items)) {
+		return [];
+	}
+
+	return items
+		.map((item) => {
+			if (
+				!item ||
+				typeof item !== "object" ||
+				typeof (item as OrderItemRecord).product !== "string" ||
+				typeof (item as OrderItemRecord).quantity !== "number"
+			) {
+				return null;
+			}
+
+			return {
+				product: (item as OrderItemRecord).product,
+				quantity: (item as OrderItemRecord).quantity,
+			};
+		})
+		.filter((item): item is OrderItemInput => Boolean(item));
+};
+
+const aggregateItems = (items: OrderItemInput[]): OrderItemInput[] => {
+	const quantitiesByProduct = new Map<string, number>();
+
+	for (const item of items) {
+		quantitiesByProduct.set(
+			item.product,
+			(quantitiesByProduct.get(item.product) ?? 0) + item.quantity,
+		);
+	}
+
+	return Array.from(quantitiesByProduct, ([product, quantity]) => ({
+		product,
+		quantity,
+	}));
+};
 
 // * ─── POST /api/orders ───────────────────────────────────────────────────
 export const createOrder = async (req: Request, res: Response) => {
@@ -85,17 +130,20 @@ export const createOrder = async (req: Request, res: Response) => {
 			if (
 				!item.quantity ||
 				typeof item.quantity !== "number" ||
+				!Number.isInteger(item.quantity) ||
 				item.quantity < 1
 			) {
 				return res.status(400).json({
 					success: false,
 					code: "INVALID_QUANTITY",
-					message: "Each item must have a quantity of at least 1.",
+					message:
+						"Each item must have a whole-number quantity of at least 1.",
 				});
 			}
 		}
 
-		const productIds = items.map((i) => i.product);
+		const cartItems = aggregateItems(items);
+		const productIds = cartItems.map((i) => i.product);
 		const products = await prisma.product.findMany({
 			where: { id: { in: productIds } },
 		});
@@ -104,7 +152,7 @@ export const createOrder = async (req: Request, res: Response) => {
 		products.forEach((p) => (productMap[p.id] = p));
 
 		// ── Stock check
-		for (const item of items) {
+		for (const item of cartItems) {
 			const product = productMap[item.product];
 
 			if (!product) {
@@ -124,7 +172,7 @@ export const createOrder = async (req: Request, res: Response) => {
 			}
 		}
 
-		const orderItems: OrderItemRecord[] = items.map((item) => {
+		const orderItems: OrderItemRecord[] = cartItems.map((item) => {
 			const dbProduct = productMap[item.product];
 			return {
 				product: dbProduct.id,
@@ -150,6 +198,20 @@ export const createOrder = async (req: Request, res: Response) => {
 		const total = Math.round((subtotal + deliveryFee + tax) * 100) / 100;
 
 		const order = await prisma.$transaction(async (tx) => {
+			for (const item of orderItems) {
+				const updated = await tx.product.updateMany({
+					where: {
+						id: item.product,
+						stock: { gte: item.quantity },
+					},
+					data: { stock: { decrement: item.quantity } },
+				});
+
+				if (updated.count !== 1) {
+					throw new Error("INSUFFICIENT_STOCK");
+				}
+			}
+
 			const created = await tx.order.create({
 				data: {
 					userId: req.user!.id,
@@ -162,20 +224,13 @@ export const createOrder = async (req: Request, res: Response) => {
 					total,
 					statusHistory: [
 						{
-							status: "Placed",
+							status: OrderStatus.Placed,
 							note: "Order placed successfully",
 							timestamp: new Date().toISOString(),
 						},
 					] as unknown as Prisma.InputJsonValue,
 				},
 			});
-
-			for (const item of orderItems) {
-				await tx.product.update({
-					where: { id: item.product },
-					data: { stock: { decrement: item.quantity } },
-				});
-			}
 
 			return created;
 		});
@@ -201,6 +256,14 @@ export const createOrder = async (req: Request, res: Response) => {
 		});
 	} catch (error) {
 		console.error("[createOrder]", error);
+		if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+			return res.status(409).json({
+				success: false,
+				code: "INSUFFICIENT_STOCK",
+				message:
+					"Some items no longer have enough stock. Please review your cart.",
+			});
+		}
 		return res.status(500).json({
 			success: false,
 			code: "SERVER_ERROR",
@@ -257,11 +320,7 @@ export const getOrder = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid order ID.",
-			});
+			return sendInvalidId(res, "order");
 		}
 
 		const order = await prisma.order.findFirst({
@@ -306,11 +365,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid order ID.",
-			});
+			return sendInvalidId(res, "order");
 		}
 
 		const { status, note } = req.body as { status: string; note?: string };
@@ -332,21 +387,39 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 			});
 		}
 
-		const history = (
-			Array.isArray(order.statusHistory) ? order.statusHistory : []
-		) as object[];
-		history.push({
-			status,
-			note: note?.trim() || `Order ${status.toLowerCase()}`,
-			timestamp: new Date().toISOString(),
-		});
+		if (!canTransitionOrderStatus(order.status, status as OrderStatus)) {
+			return res.status(409).json({
+				success: false,
+				code: "INVALID_ORDER_STATE",
+				message: `Cannot change an order from ${order.status} to ${status}.`,
+			});
+		}
 
-		const updated = await prisma.order.update({
-			where: { id },
-			data: {
-				status: status as OrderStatus,
-				statusHistory: history as unknown as Prisma.InputJsonValue,
-			},
+		const updated = await prisma.$transaction(async (tx) => {
+			if (
+				status === OrderStatus.Cancelled &&
+				order.status !== OrderStatus.Cancelled
+			) {
+				for (const item of getStockItemsFromOrder(order.items)) {
+					await tx.product.updateMany({
+						where: { id: item.product },
+						data: { stock: { increment: item.quantity } },
+					});
+				}
+			}
+
+			return tx.order.update({
+				where: { id },
+				data: {
+					status: status as OrderStatus,
+					statusHistory: appendStatusHistory(
+						order.statusHistory,
+						status as OrderStatus,
+						note?.trim() || `Order ${status.toLowerCase()}`,
+					),
+					...(status === OrderStatus.Delivered && { isPaid: true }),
+				},
+			});
 		});
 
 		return res.status(200).json({
@@ -397,11 +470,7 @@ export const getOrderLocation = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid order ID.",
-			});
+			return sendInvalidId(res, "order");
 		}
 
 		const order = await prisma.order.findFirst({

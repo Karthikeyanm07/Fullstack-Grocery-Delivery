@@ -11,6 +11,13 @@ import { checkRateLimit } from "../utils/rateLimiter.js";
 import { DUMMY_HASH, getParamId, normalizeEmail } from "../utils/helper.js";
 import { OrderStatus, Prisma } from "../generated/prisma/client.js";
 import { clearPartnerCookie, sendPartnerCookie } from "../utils/authCookie.js";
+import {
+	ACTIVE_DELIVERY_STATUSES,
+	appendStatusHistory,
+	canTransitionOrderStatus,
+	isTerminalOrderStatus,
+} from "../utils/order.js";
+import { getClientIP, sendInvalidId } from "../utils/request.js";
 
 // * ─── Helpers ──────────────────────────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -33,13 +40,8 @@ const safePartner = (partner: { password: string; [key: string]: unknown }) => {
 // * ─── POST api/delivery/login ───────────────────────────────────────────────
 export const loginPartner = async (req: Request, res: Response) => {
 	try {
-		const ip =
-			(req.headers["x-forwarded-for"] as string)?.split(",")[0].trim() ??
-			req.socket.remoteAddress ??
-			"unknown";
-
 		const rateLimit = await checkRateLimit({
-			key: `partner-login:${ip}`,
+			key: `partner-login:${getClientIP(req)}`,
 			maxAttempts: PARTNER_LOGIN_MAX_ATTEMPTS,
 			windowMS: PARTNER_LOGIN_WINDOW_MS,
 		});
@@ -178,11 +180,7 @@ export const getDeliveryDetail = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid delivery ID.",
-			});
+			return sendInvalidId(res, "delivery");
 		}
 
 		const order = await prisma.order.findFirst({
@@ -219,11 +217,7 @@ export const completeDelivery = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid delivery ID.",
-			});
+			return sendInvalidId(res, "delivery");
 		}
 
 		const { otp } = req.body as { otp?: unknown };
@@ -247,10 +241,7 @@ export const completeDelivery = async (req: Request, res: Response) => {
 			});
 		}
 
-		if (
-			order.status === OrderStatus.Cancelled ||
-			order.status === OrderStatus.Delivered
-		) {
+		if (isTerminalOrderStatus(order.status)) {
 			return res.status(409).json({
 				success: false,
 				code: "INVALID_STATE",
@@ -267,20 +258,15 @@ export const completeDelivery = async (req: Request, res: Response) => {
 			});
 		}
 
-		const history = (
-			Array.isArray(order.statusHistory) ? order.statusHistory : []
-		) as object[];
-		history.push({
-			status: OrderStatus.Delivered,
-			note: "Delivered successfully",
-			timestamp: new Date().toISOString(),
-		});
-
 		const updated = await prisma.order.update({
 			where: { id: order.id },
 			data: {
 				status: OrderStatus.Delivered,
-				statusHistory: history as unknown as Prisma.InputJsonValue,
+				statusHistory: appendStatusHistory(
+					order.statusHistory,
+					OrderStatus.Delivered,
+					"Delivered successfully",
+				),
 				deliveryOtp: "", // clear OTP after use — can't replay it
 				isPaid: true,
 			},
@@ -306,11 +292,7 @@ export const cancelDelivery = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid delivery ID.",
-			});
+			return sendInvalidId(res, "delivery");
 		}
 
 		const order = await prisma.order.findFirst({
@@ -342,22 +324,46 @@ export const cancelDelivery = async (req: Request, res: Response) => {
 			});
 		}
 
-		const { reason } = req.body as { reason?: string };
-		const history = (
-			Array.isArray(order.statusHistory) ? order.statusHistory : []
-		) as object[];
-		history.push({
-			status: OrderStatus.Cancelled,
-			note: reason?.trim() || "Cancelled by delivery partner",
-			timestamp: new Date().toISOString(),
-		});
+		const { reason } = req.body as { reason?: unknown };
+		const note =
+			typeof reason === "string" && reason.trim()
+				? reason.trim().slice(0, 250)
+				: "Cancelled by delivery partner";
 
-		const updated = await prisma.order.update({
-			where: { id: order.id },
-			data: {
-				status: OrderStatus.Cancelled,
-				statusHistory: history as unknown as Prisma.InputJsonValue,
-			},
+		const updated = await prisma.$transaction(async (tx) => {
+			const items = Array.isArray(order.items) ? order.items : [];
+			for (const item of items) {
+				if (
+					item &&
+					typeof item === "object" &&
+					typeof (item as { product?: unknown }).product ===
+						"string" &&
+					typeof (item as { quantity?: unknown }).quantity ===
+						"number"
+				) {
+					await tx.product.updateMany({
+						where: { id: (item as { product: string }).product },
+						data: {
+							stock: {
+								increment: (item as { quantity: number })
+									.quantity,
+							},
+						},
+					});
+				}
+			}
+
+			return tx.order.update({
+				where: { id: order.id },
+				data: {
+					status: OrderStatus.Cancelled,
+					statusHistory: appendStatusHistory(
+						order.statusHistory,
+						OrderStatus.Cancelled,
+						note,
+					),
+				},
+			});
 		});
 
 		return res.status(200).json({
@@ -380,11 +386,7 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid delivery ID.",
-			});
+			return sendInvalidId(res, "delivery");
 		}
 
 		const { status } = req.body as { status?: unknown };
@@ -414,10 +416,7 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
 			});
 		}
 
-		if (
-			order.status === OrderStatus.Delivered ||
-			order.status === OrderStatus.Cancelled
-		) {
+		if (isTerminalOrderStatus(order.status)) {
 			return res.status(409).json({
 				success: false,
 				code: "INVALID_STATE",
@@ -425,20 +424,23 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
 			});
 		}
 
-		const history = (
-			Array.isArray(order.statusHistory) ? order.statusHistory : []
-		) as object[];
-		history.push({
-			status,
-			note: `Status updated to ${status}`,
-			timestamp: new Date().toISOString(),
-		});
+		if (!canTransitionOrderStatus(order.status, status as OrderStatus)) {
+			return res.status(409).json({
+				success: false,
+				code: "INVALID_ORDER_STATE",
+				message: `Cannot change a delivery from ${order.status} to ${status}.`,
+			});
+		}
 
 		const updated = await prisma.order.update({
 			where: { id: order.id },
 			data: {
 				status: status as OrderStatus,
-				statusHistory: history as unknown as Prisma.InputJsonValue,
+				statusHistory: appendStatusHistory(
+					order.statusHistory,
+					status as OrderStatus,
+					`Status updated to ${status}`,
+				),
 			},
 		});
 
@@ -462,18 +464,21 @@ export const updateLocation = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid delivery ID.",
-			});
+			return sendInvalidId(res, "delivery");
 		}
 
 		const { lat, lng } = req.body as Record<string, unknown>;
 		const latNum = Number(lat);
 		const lngNum = Number(lng);
 
-		if (isNaN(latNum) || isNaN(lngNum)) {
+		if (
+			!Number.isFinite(latNum) ||
+			!Number.isFinite(lngNum) ||
+			latNum < -90 ||
+			latNum > 90 ||
+			lngNum < -180 ||
+			lngNum > 180
+		) {
 			return res.status(400).json({
 				success: false,
 				code: "INVALID_COORDINATES",
@@ -487,11 +492,7 @@ export const updateLocation = async (req: Request, res: Response) => {
 				id,
 				deliveryPartnerId: req.partner!.id,
 				status: {
-					in: [
-						OrderStatus.Confirmed,
-						OrderStatus.Preparing,
-						OrderStatus.OutForDelivery,
-					],
+					in: ACTIVE_DELIVERY_STATUSES,
 				},
 			},
 		});

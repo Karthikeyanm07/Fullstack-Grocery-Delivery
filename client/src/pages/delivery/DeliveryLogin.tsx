@@ -1,15 +1,23 @@
 import { useState } from "react";
-import { BikeIcon } from "lucide-react";
+import { BikeIcon, Loader2Icon } from "lucide-react";
 import { heroSectionData } from "../../assets/assets";
+import { useDeliveryAuth } from "../../context/DeliveryAuthContext";
 
 export default function DeliveryLogin() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const { login } = useDeliveryAuth();
 
     const handleSubmit = async (e: React.SubmitEvent) => {
         e.preventDefault();
-
+        setLoading(true);
+        try {
+            await login(email, password);
+        } catch (_error) {
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -45,7 +53,7 @@ export default function DeliveryLogin() {
                             <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border not-focus:border-app-border text-sm transition-colors" placeholder="••••••••" />
                         </div>
                         <button type="submit" disabled={loading} className="w-full py-3 bg-app-green text-white font-semibold rounded-xl hover:bg-app-green-light transition-colors disabled:opacity-60">
-                            {loading ? "Signing in..." : "Sign In"}
+                            {loading ? <Loader2Icon className="size-5 animate-spin mx-auto" /> : "Sign In"}
                         </button>
                     </form>
                 </div>

@@ -16,6 +16,7 @@ import {
 import DummyReviewsSection from "../assets/DummyReviewsSection.tsx";
 import ProductCard from "../components/ProductCard.tsx";
 import api from "../config/api.ts";
+import toast from "react-hot-toast";
 
 const ProductPage = () => {
 	const currency = import.meta.env.VITE_CURRENCY_SYMBOL || "₹";
@@ -37,7 +38,6 @@ const ProductPage = () => {
 			try {
 				const response = await api.get(`/products/${id}`);
 				const targetProduct = response?.product;
-				console.log(targetProduct);
 				if (targetProduct) {
 					setProduct(targetProduct);
 
@@ -46,7 +46,7 @@ const ProductPage = () => {
 					);
 
 					const filterRelated = (relatedRes?.products || []).filter(
-						(p) => p.id !== targetProduct.id,
+						(p: Product) => p.id !== targetProduct.id,
 					);
 
 					setRelatedProducts(filterRelated);
@@ -87,7 +87,7 @@ const ProductPage = () => {
 		if (inCart) {
 			updateQuantity(product.id, cartItem.quantity + 1);
 		} else {
-			setLocalQuantity(localQuantity + 1);
+			setLocalQuantity(Math.min(product.stock, localQuantity + 1));
 		}
 	};
 
@@ -259,6 +259,7 @@ const ProductPage = () => {
 									onClick={() => {
 										if (!inCart) {
 											addToCart(product, localQuantity);
+											toast.success(`${product.name} is added`)
 										}
 									}}
 								>
@@ -291,7 +292,7 @@ const ProductPage = () => {
 								className="text-sm font-semibold text-app-orange 
 								hover:text-app-orange-dark flex items-center gap-1 transition-colors"
 							>
-								View All <ArrowRightIcon size-4 />
+								View All <ArrowRightIcon className="size-4" />
 							</Link>
 						</div>
 

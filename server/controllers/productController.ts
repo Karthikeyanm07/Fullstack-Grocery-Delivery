@@ -12,6 +12,7 @@ import {
 } from "../utils/schemas.js";
 import { Prisma } from "../generated/prisma/client.js";
 import { getParamId } from "../utils/helper.js";
+import { sendInvalidId } from "../utils/request.js";
 // * ─── helpers ───────────────────────────────────────────────────────────
 // Discount is a derived value — computed here rather than stored in the DB
 const attachDiscount = <
@@ -203,11 +204,7 @@ export const updateProduct = async (req: Request, res: Response) => {
 		// Extract and validate id before using it
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid product ID.",
-			});
+			return sendInvalidId(res, "product");
 		}
 
 		const existing = await prisma.product.findUnique({
@@ -265,11 +262,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
 
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid product ID.",
-			});
+			return sendInvalidId(res, "product");
 		}
 
 		const existing = await prisma.product.findUnique({

@@ -9,6 +9,7 @@ import {
 import { AddressSchema, UpdateAddressSchema } from "../utils/schemas.js";
 import { getParamId } from "../utils/helper.js";
 import { Prisma } from "../generated/prisma/client.js";
+import { sendInvalidId } from "../utils/request.js";
 
 // * ─── Helpers ──────────────────────────────────────────────────────────────────
 const checkAddressWriteLimit = (userId: string) =>
@@ -66,8 +67,19 @@ export const addAddress = async (req: Request, res: Response) => {
 			});
 		}
 
-		const { label, address, city, state, zip, isDefault, lat, lng } =
-			parsed.data;
+		const {
+			label,
+			name,
+			phone,
+			address,
+			landmark,
+			city,
+			state,
+			zip,
+			isDefault,
+			lat,
+			lng,
+		} = parsed.data;
 
 		const existingCount = await prisma.address.count({
 			where: { userId: req.user!.id },
@@ -95,7 +107,10 @@ export const addAddress = async (req: Request, res: Response) => {
 				data: {
 					userId: req.user!.id,
 					label,
+					name,
+					phone,
 					address,
+					landmark,
 					city,
 					state,
 					zip,
@@ -137,11 +152,7 @@ export const updateAddress = async (req: Request, res: Response) => {
 
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid address ID.",
-			});
+			return sendInvalidId(res, "address");
 		}
 
 		// ── Validate input ──────────────────────────────────────────────────────
@@ -173,6 +184,15 @@ export const updateAddress = async (req: Request, res: Response) => {
 		}
 
 		const { isDefault, ...rest } = parsed.data;
+
+		if (existing.isDefault && isDefault === false) {
+			return res.status(409).json({
+				success: false,
+				code: "DEFAULT_ADDRESS_REQUIRED",
+				message:
+					"Choose another default address before unsetting this one.",
+			});
+		}
 
 		const updated = await prisma.$transaction(async (tx) => {
 			if (isDefault === true) {
@@ -223,11 +243,7 @@ export const deleteAddress = async (req: Request, res: Response) => {
 
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid address ID.",
-			});
+			return sendInvalidId(res, "address");
 		}
 
 		const existing = await prisma.address.findUnique({ where: { id } });

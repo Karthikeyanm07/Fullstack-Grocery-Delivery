@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { PlusIcon, EditIcon, XIcon } from "lucide-react";
 import type { Product } from "../../types";
 import Loading from "../../components/Loading";
-import { dummyProducts } from "../../assets/assets";
+import api from "../../config/api";
+import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 export default function AdminProducts() {
 	const currency = import.meta.env.VITE_CURRENCY_SYMBOL || "$";
@@ -12,10 +14,14 @@ export default function AdminProducts() {
 	const [loading, setLoading] = useState(true);
 
 	const fetchProducts = async () => {
-		setProducts(dummyProducts);
-		setTimeout(() => {
+		try {
+			const response = await api.get("/products");
+			setProducts(response.products || []);
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to fetch products."));
+		} finally {
 			setLoading(false);
-		}, 1000);
+		}
 	};
 
 	useEffect(() => {
@@ -29,7 +35,17 @@ export default function AdminProducts() {
 			)
 		)
 			return;
-		console.log(id);
+		try {
+			const response = await api.put(`/products/${id}`, { stock: 0 });
+			setProducts((prev) =>
+				prev.map((product) =>
+					product.id === id ? response.product : product,
+				),
+			);
+			toast.success("Product marked out of stock.");
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to update product."));
+		}
 	};
 
 	if (loading) return <Loading />;

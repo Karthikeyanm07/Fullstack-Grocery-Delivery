@@ -7,7 +7,10 @@ import {
 	AlertTriangleIcon,
 } from "lucide-react";
 import Loading from "../../components/Loading";
-import { dummyAdminDashboardData, statusColors } from "../../assets/assets";
+import { statusColors } from "../../assets/assets";
+import api from "../../config/api";
+import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 interface Stats {
 	totalOrders: number;
@@ -24,10 +27,17 @@ export default function AdminDashboard() {
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		setTimeout(() => {
-			setStats(dummyAdminDashboardData);
+		const fetchStats = async () => {
+			try {
+				const response = await api.get("/admin");
+				setStats(response);
+			} catch (error) {
+				toast.error(getApiErrorMessage(error, "Failed to fetch dashboard."));
+			} finally {
 			setLoading(false);
-		}, 1000);
+			}
+		};
+		fetchStats();
 	}, []);
 
 	const cards = stats

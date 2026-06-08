@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import type { Order } from "../types/index.ts";
 import { Link, useSearchParams } from "react-router-dom";
 import { useCart } from "../context/CartContext.tsx";
-import { dummyDashboardOrdersData, statusColors } from "../assets/assets.ts";
+import { statusColors } from "../assets/assets.ts";
 import Loading from "../components/Loading.tsx";
 import { CalendarIcon, ChevronRightIcon, PackageIcon } from "lucide-react";
+import api from "../config/api.ts";
+import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../utils/apiError.ts";
 
 const MyOrders = () => {
 	const currency = import.meta.env.VITE_CURRENCY_SYMBOL;
@@ -13,27 +16,35 @@ const MyOrders = () => {
 	const [loading, setLoading] = useState(true);
 	const [activeTab, setActiveTab] = useState("all");
 	const [searchParams, setSearchParams] = useSearchParams();
+	const shouldClearCart = searchParams.get("clearCart");
 
-	const tabs = ["all", "Placed", "Out of Delivery", "Delivered"];
+	const tabs = ["all", "Placed", "Confirmed", "Preparing", "OutForDelivery", "Delivered"];
 
 	const { clearCart } = useCart();
 
 	const fetchOrders = async () => {
-		setOrders(dummyDashboardOrdersData as any);
-		setLoading(false);
+		setLoading(true);
+		try {
+			const response = await api.get(
+				`/orders${activeTab === "all" ? "" : `?status=${activeTab}`}`,
+			);
+			setOrders(response.orders || []);
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to fetch orders."));
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	useEffect(() => {
-		if (searchParams.get("clearCart")) {
+		if (shouldClearCart) {
 			clearCart();
 			setSearchParams({});
-			setTimeout(() => {
-				fetchOrders();
-			}, 2000);
+			fetchOrders();
 		} else {
 			fetchOrders();
 		}
-	}, [activeTab]);
+	}, [activeTab, shouldClearCart, setSearchParams]);
 	return (
 		<div className="min-h-screen bg-app-cream mb-20">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

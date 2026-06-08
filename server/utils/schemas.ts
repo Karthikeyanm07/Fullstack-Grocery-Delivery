@@ -17,13 +17,24 @@ export const CreateProductSchema = z.object({
 
 export const UpdateProductSchema = CreateProductSchema.partial();
 
-export const QuerySchema = z.object({
-	category: z.string().optional(),
-	search: z.string().max(100).optional(),
-	minPrice: z.coerce.number().min(0).optional(),
-	maxPrice: z.coerce.number().min(0).optional(),
-	sort: z.enum(["price-low", "price-high", "newest"]).optional(),
-});
+export const QuerySchema = z
+	.object({
+		category: z.string().optional(),
+		search: z.string().max(100).optional(),
+		minPrice: z.coerce.number().min(0).optional(),
+		maxPrice: z.coerce.number().min(0).optional(),
+		sort: z.enum(["price-low", "price-high", "newest"]).optional(),
+	})
+	.refine(
+		(data) =>
+			data.minPrice === undefined ||
+			data.maxPrice === undefined ||
+			data.minPrice <= data.maxPrice,
+		{
+			message: "minPrice cannot be greater than maxPrice",
+			path: ["minPrice"],
+		},
+	);
 
 export const AddressSchema = z.object({
 	label: z.string().min(1).max(50).trim(),
@@ -35,8 +46,8 @@ export const AddressSchema = z.object({
 	state: z.string().min(1).max(100).trim(),
 	zip: z.string().min(1).max(20).trim(),
 	isDefault: z.boolean().optional().default(false),
-	lat: z.coerce.number("lat must be a number"),
-	lng: z.coerce.number("lng must be a number"),
+	lat: z.coerce.number("lat must be a number").min(-90).max(90),
+	lng: z.coerce.number("lng must be a number").min(-180).max(180),
 });
 
 export const UpdateAddressSchema = AddressSchema.partial();

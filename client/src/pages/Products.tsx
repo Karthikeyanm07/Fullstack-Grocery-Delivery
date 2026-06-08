@@ -4,10 +4,11 @@ import type { Product } from "../types/index.ts";
 import { categoriesData } from "../assets/assets.ts";
 import { ChevronDown, Home, SlidersHorizontal, XIcon } from "lucide-react";
 import ProductCard from "../components/ProductCard.tsx";
-import Loading from "../components/Loading.tsx";
 import FilterPanel from "../components/FilterPanel.tsx";
 import api from "../config/api.ts";
 import toast from "react-hot-toast";
+import { ProductGridSkeleton } from "../components/Skeleton.tsx";
+import { getApiErrorMessage } from "../utils/apiError.ts";
 
 const Products = () => {
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -17,7 +18,6 @@ const Products = () => {
 	const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
 	const category = searchParams.get("category") || "";
-	const organic = searchParams.get("organic") || "";
 	const sort = searchParams.get("sort") || "";
 	const page = Number(searchParams.get("page")) || 1;
 	const minPrice = searchParams.get("minPrice") || "";
@@ -29,9 +29,6 @@ const Products = () => {
 			const params = new URLSearchParams();
 			if (category) {
 				params.set("category", category);
-			}
-			if (organic) {
-				params.set("organic", organic);
 			}
 			if (sort) {
 				params.set("sort", sort);
@@ -52,7 +49,7 @@ const Products = () => {
 			setProducts(productsList);
 			setTotalPages(totalPagesCount);
 		} catch (error: any) {
-			toast.error(error.response?.data.message || error?.message);
+			toast.error(getApiErrorMessage(error, "Failed to fetch products."));
 		} finally {
 			setLoading(false);
 		}
@@ -76,11 +73,11 @@ const Products = () => {
 	const clearFilters = () => setSearchParams({});
 
 	const activeCategory = categoriesData.find((c) => c.slug === category);
-	const hasFilters = category || organic || minPrice || maxPrice;
+	const hasFilters = category || minPrice || maxPrice;
 
 	useEffect(() => {
 		fetchProducts();
-	}, [category, organic, sort, page, minPrice, maxPrice]);
+	}, [category, sort, page, minPrice, maxPrice]);
 	return (
 		<div className="min-h-screen bg-app-cream">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -102,10 +99,9 @@ const Products = () => {
 					{/* Filter Sidebar */}
 					<aside className="hidden lg:block w-64 shrink-0">
 						<div className="bg-white rounded-2xl p-4 sticky top-24">
-							<FilterPanel
+								<FilterPanel
 								categories={categoriesData}
 								category={category}
-								organic={organic}
 								minPrice={minPrice}
 								maxPrice={maxPrice}
 								updateFilter={updateFilter}
@@ -151,16 +147,12 @@ const Products = () => {
 											border-app-border focus:border-app-green outline-none cursor-pointer"
 									>
 										<option value="">Newest</option>
-										<option value="price_asc">
+										<option value="price-low">
 											Price: Low → High
 										</option>
-										<option value="price_desc">
+										<option value="price-high">
 											Price High → Low
 										</option>
-										<option value="rating">
-											Top Rated
-										</option>
-										<option value="name">A → Z</option>
 									</select>
 									<ChevronDown
 										className="absolute right-2.5 top-1/2 -translate-y-1/2 
@@ -171,7 +163,7 @@ const Products = () => {
 						</div>
 						{/* Products Grid */}
 						{loading ? (
-							<Loading />
+							<ProductGridSkeleton />
 						) : products.length === 0 ? (
 							<div className="text-center py-16">
 								<p className="text-lg font-semibold text-app-green mb-2">
@@ -259,7 +251,6 @@ const Products = () => {
 							<FilterPanel
 								categories={categoriesData}
 								category={category}
-								organic={organic}
 								minPrice={minPrice}
 								maxPrice={maxPrice}
 								updateFilter={updateFilter}
