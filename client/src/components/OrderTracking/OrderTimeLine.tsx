@@ -2,15 +2,14 @@ import { ClockIcon, CheckIcon, TruckIcon, PackageIcon } from "lucide-react";
 
 export default function OrderTimeLine({ order }: { order: any }) {
 
-    const allStatuses = ["Placed", "Confirmed", "Assigned", "Packed", "Out for Delivery", "Delivered"];
+    const allStatuses = ["Placed", "Confirmed", "Preparing", "OutForDelivery", "Delivered"];
     const currentIdx = allStatuses.indexOf(order.status);
 
     const statusIcons: any = {
         Placed: ClockIcon,
         Confirmed: CheckIcon,
-        Assigned: TruckIcon,
-        Packed: PackageIcon,
-        "Out for Delivery": TruckIcon,
+        Preparing: PackageIcon,
+        OutForDelivery: TruckIcon,
         Delivered: CheckIcon,
     };
 

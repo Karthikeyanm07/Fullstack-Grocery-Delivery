@@ -73,7 +73,8 @@ const ProductCard = ({ product }: Props) => {
 					</div>
 					<button
 						className="size-7 rounded-full bg-app-orange text-white 
-						flex-center shrink-0 hover:bg-app-orange-dark transition-colors active:scale-95"
+						flex-center shrink-0 hover:bg-app-orange-dark transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+						disabled={product.stock <= 0}
 						onClick={(e) => {
 							e.stopPropagation();
 							addToCart(product);

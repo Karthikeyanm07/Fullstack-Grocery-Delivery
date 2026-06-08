@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext.tsx";
-import { dummyAddressData } from "../assets/assets.ts";
 import {
 	ArrowLeftIcon,
 	CheckIcon,
@@ -12,16 +11,25 @@ import {
 import CheckoutAddress from "../components/Checkout/CheckoutAddress.tsx";
 import CheckoutPayment from "../components/Checkout/CheckoutPayment.tsx";
 import CheckoutReview from "../components/Checkout/CheckoutReview.tsx";
+import type { Address } from "../types/index.ts";
+import api from "../config/api.ts";
+import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../utils/apiError.ts";
 
 const Checkout = () => {
-	const { items, cartTotal } = useCart();
+	const { items, cartTotal, clearCart } = useCart();
 
 	const [step, setStep] = useState("address");
 	const [loading, setLoading] = useState(false);
-	const [address, setAddress] = useState({
+	const [addresses, setAddresses] = useState<Address[]>([]);
+	const [addressesLoading, setAddressesLoading] = useState(true);
+	const [address, setAddress] = useState<Address>({
 		id: "",
 		label: "Home",
+		name: "",
+		phone: "",
 		address: "",
+		landmark: "",
 		city: "",
 		state: "",
 		zip: "",
@@ -29,13 +37,11 @@ const Checkout = () => {
 		lat: 0,
 		lng: 0,
 	});
-	const [paymentMethod, setPaymentMethod] = useState("card");
+	const [paymentMethod, setPaymentMethod] = useState("cash");
 
-	const deliveryFee = cartTotal > 500 ? 0 : 50;
-	const tax = cartTotal * 0.88;
+	const deliveryFee = cartTotal >= 500 ? 0 : 100;
+	const tax = Math.round(cartTotal * 0.08 * 100) / 100;
 	const total = cartTotal + deliveryFee + tax;
-
-	const { user } = { user: { addresses: dummyAddressData } };
 
 	const navigate = useNavigate();
 	const currency = import.meta.env.VITE_CURRENCY_SYMBOL;
@@ -48,27 +54,48 @@ const Checkout = () => {
 
 	const handlePlaceOrder = async () => {
 		setLoading(true);
-		navigate("/orders");
+		try {
+			const response = await api.post("/orders", {
+				items: items.map((item) => ({
+					product: item.product.id,
+					quantity: item.quantity,
+				})),
+				shippingAddress: address,
+				paymentMethod,
+			});
+			clearCart();
+			toast.success("Order placed successfully.");
+			navigate(`/orders/${response.order.id}`);
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to place order."));
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	// Populate address from users default address
-	useState(() => {
-		if (user?.addresses?.length) {
-			const defaultAddress =
-				user.addresses.find((a) => a.isDefault) || user.addresses[0];
-			setAddress({
-				id: defaultAddress?.id,
-				label: defaultAddress?.label,
-				address: defaultAddress?.address,
-				city: defaultAddress?.city,
-				state: defaultAddress?.state,
-				zip: defaultAddress?.zip,
-				isDefault: defaultAddress?.isDefault,
-				lat: defaultAddress?.lat,
-				lng: defaultAddress?.lng,
-			});
-		}
-	});
+	useEffect(() => {
+		const fetchAddresses = async () => {
+			try {
+				const response = await api.get("/addresses");
+				const savedAddresses = response.addresses || [];
+				setAddresses(savedAddresses);
+				if (savedAddresses.length) {
+					const defaultAddress =
+						savedAddresses.find((a: Address) => a.isDefault) ||
+						savedAddresses[0];
+					setAddress(defaultAddress);
+				}
+			} catch (error) {
+				toast.error(
+					getApiErrorMessage(error, "Failed to fetch addresses."),
+				);
+			} finally {
+				setAddressesLoading(false);
+			}
+		};
+		fetchAddresses();
+	}, []);
 
 	if (items.length === 0) {
 		return (
@@ -139,7 +166,8 @@ const Checkout = () => {
 								address={address}
 								setAddress={setAddress}
 								setStep={setStep}
-								user={user}
+								addresses={addresses}
+								loading={addressesLoading}
 							/>
 						)}
 
@@ -158,6 +186,7 @@ const Checkout = () => {
 								items={items}
 								loading={loading}
 								total={total}
+								paymentMethod={paymentMethod}
 							/>
 						)}
 					</div>

@@ -11,8 +11,13 @@ import { inngest, functions } from "../inngest/index.js";
 import addressRouter from "../routes/addressRoutes.js";
 import adminRouter from "../routes/adminRoutes.js";
 import deliveryPartnerRouter from "../routes/deliveryPartnerRoutes.js";
+import {
+	requireTrustedOrigin,
+	securityHeaders,
+} from "../middleware/security.js";
 
 const app = express();
+app.set("trust proxy", 1);
 
 // ─── Middleware ──────────────────────────────────────────────────────────────
 app.use(
@@ -22,6 +27,8 @@ app.use(
 	}),
 );
 
+app.use(securityHeaders);
+app.use(requireTrustedOrigin);
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(cookieParser());

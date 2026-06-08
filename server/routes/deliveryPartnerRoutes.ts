@@ -5,6 +5,7 @@ import {
 	getDeliveryDetail,
 	getMyDeliveries,
 	loginPartner,
+	logoutPartner,
 	updateDeliveryStatus,
 	updateLocation,
 } from "../controllers/deliveryPartnerController.js";
@@ -13,6 +14,8 @@ import deliveryAuth from "../middleware/deliveryAuth.js";
 const deliveryPartnerRouter = express.Router();
 
 deliveryPartnerRouter.post("/", loginPartner);
+deliveryPartnerRouter.post("/login", loginPartner);
+deliveryPartnerRouter.post("/logout", logoutPartner);
 deliveryPartnerRouter.get("/my-deliveries", deliveryAuth, getMyDeliveries);
 deliveryPartnerRouter.get(
 	"/my-deliveries/:id",

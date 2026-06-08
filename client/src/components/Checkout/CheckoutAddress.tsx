@@ -1,36 +1,41 @@
 import { ChevronRightIcon, MapPinIcon, PlusIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import Loading from "../Loading";
+import type { Address } from "../../types";
 
-const CheckoutAddress = ({ user, address, setAddress, setStep }: any) => {
+interface CheckoutAddressProps {
+	addresses: Address[];
+	address: Address;
+	setAddress: (address: Address) => void;
+	setStep: (step: string) => void;
+	loading: boolean;
+}
+
+const CheckoutAddress = ({
+	addresses,
+	address,
+	setAddress,
+	setStep,
+	loading,
+}: CheckoutAddressProps) => {
 	return (
 		<div className="bg-white rounded-2xl p-6 animate-fade-in">
 			<h2 className="text-lg font-semibold text-app-green mb-5 flex items-center gap-2">
 				<MapPinIcon className="size-5" /> Delivery Address
 			</h2>
-			{user?.addresses && user.addresses.length > 0 && (
+			{loading ? (
+				<Loading />
+			) : addresses.length > 0 ? (
 				<div className="mb-6">
 					<h3 className="text-sm font-semibold text-app-green mb-3">
 						Saved Addresses
 					</h3>
 					<div className="grid sm:grid-cols-2 gap-3">
-						{user.addresses.map((addr: any) => (
+						{addresses.map((addr) => (
 							<div
 								key={addr.id || addr.label}
-								onClick={() =>
-									setAddress({
-										label: addr.label,
-										name: addr.name,
-										phone: addr.phone,
-										address: addr.address,
-										landmark: addr.landmark,
-										city: addr.city,
-										state: addr.state,
-										zip: addr.zip,
-										lat: addr.lat,
-										lng: addr.lng,
-									})
-								}
-								className={`p-4 rounded-xl border cursor-pointer transition-colors ${address.label === addr.label && address.address === addr.address ? "border-app-green bg-app-cream" : "border-app-border hover:bg-app-cream"}`}
+								onClick={() => setAddress(addr)}
+								className={`p-4 rounded-xl border cursor-pointer transition-colors ${address.id === addr.id ? "border-app-green bg-app-cream" : "border-app-border hover:bg-app-cream"}`}
 							>
 								<div className="flex items-center gap-2 mb-1">
 									<MapPinIcon className="size-4 text-app-green" />
@@ -53,6 +58,10 @@ const CheckoutAddress = ({ user, address, setAddress, setStep }: any) => {
 						))}
 					</div>
 				</div>
+			) : (
+				<p className="text-sm text-app-text-light mb-4">
+					Add a delivery address before continuing.
+				</p>
 			)}
 			<Link
 				to="/addresses"

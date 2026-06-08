@@ -20,7 +20,11 @@ export const normalizeEmail = (raw: unknown): string | null => {
 	}
 
 	const trimmed = raw.trim().toLowerCase();
-	return trimmed.length > 0 ? trimmed : null;
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+		return null;
+	}
+
+	return trimmed;
 };
 
 export const DUMMY_HASH =

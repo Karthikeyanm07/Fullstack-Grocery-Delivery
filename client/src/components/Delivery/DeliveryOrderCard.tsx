@@ -94,26 +94,26 @@ export default function DeliveryOrderCard({
 			{/* Actions */}
 			{tab === "active" && (
 				<div className="px-5 py-3 border-t border-app-border flex flex-wrap gap-2">
-					{(order.status === "Assigned" ||
-						order.status === "Packed") && (
+					{(order.status === "Confirmed" ||
+						order.status === "Preparing") && (
 						<button
 							onClick={() =>
 								handleUpdateStatus(
 									order.id,
-									order.status === "Assigned"
-										? "Packed"
-										: "Out for Delivery",
+									order.status === "Confirmed"
+										? "Preparing"
+										: "OutForDelivery",
 								)
 							}
 							className="px-4 py-2 text-sm font-medium bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition-colors flex items-center gap-1.5"
 						>
 							<TruckIcon className="w-3.5 h-3.5" />
-							{order.status === "Assigned"
-								? "Mark Packed"
+							{order.status === "Confirmed"
+								? "Start Preparing"
 								: "Out for Delivery"}
 						</button>
 					)}
-					{order.status === "Out for Delivery" && (
+					{order.status === "OutForDelivery" && (
 						<button
 							onClick={() => setOtpModal(order.id)}
 							className="px-4 py-2 text-sm font-medium bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition-colors flex items-center gap-1.5"

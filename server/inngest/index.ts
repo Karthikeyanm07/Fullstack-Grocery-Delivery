@@ -1,6 +1,9 @@
 import { Inngest, cron } from "inngest";
 import { prisma } from "../config/prisma.js";
 import sendEmail from "../config/nodemailer.js";
+import crypto from "crypto";
+import { OrderStatus } from "../generated/prisma/client.js";
+import { appendStatusHistory } from "../utils/order.js";
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -118,7 +121,9 @@ const sendMonthlyOffers = inngest.createFunction(
 		for (let i = 0; i < users.length; i += batchSize) {
 			const batch = users.slice(i, i + batchSize);
 
-			await step.run(`send-offers-batch-${1}`, async () => {
+			await step.run(
+				`send-offers-batch-${Math.floor(i / batchSize) + 1}`,
+				async () => {
 				for(const u of batch) {
 					await sendEmail({
 						to: u.email,
@@ -216,13 +221,20 @@ const autoAssignRider = inngest.createFunction(
 			if(order.deliveryPartnerId) {
 				return {skipped: true, reason: "Order already assigned"};
 			}
-			if(["Cancelled", "Delivered"].includes(order.status)) {
+			const terminalStatuses: OrderStatus[] = [
+				OrderStatus.Cancelled,
+				OrderStatus.Delivered,
+			];
+			if(terminalStatuses.includes(order.status)) {
 				return {skipped: true, reason: `Order is ${order.status.toLowerCase()}`};
+			}
+			if(order.paymentMethod === "card" && !order.isPaid) {
+				return {skipped: true, reason: "Payment pending"};
 			}
 
 			const busyOrders = await prisma.order.findMany({
 				where: {
-					status: {in: ["Confirmed", "Preparing", "OutForDelivery"]},
+					status: {in: [OrderStatus.Confirmed, OrderStatus.Preparing, OrderStatus.OutForDelivery]},
 					deliveryPartnerId: {not: null},
 				},
 				select: {deliveryPartnerId: true},
@@ -242,17 +254,19 @@ const autoAssignRider = inngest.createFunction(
 			}
 
 			// Generate OTP for delivery partner
-			const otp = Math.floor(100000 + Math.random() * 900000).toString();
-			
-			const history = (Array.isArray(order.statusHistory) ? order.statusHistory : []) as any[];
-			history.push({status: "Assigned", note: `Assigned to ${availableRiders.name}`, timestamp: new Date()});
+			const otp = crypto.randomInt(100000, 1000000).toString();
 
 			await prisma.order.update({
 				where: {id: orderId},
 				data: {
 					deliveryPartnerId: availableRiders.id,
 					deliveryOtp: otp,
-					statusHistory: history,
+					status: OrderStatus.Confirmed,
+					statusHistory: appendStatusHistory(
+						order.statusHistory,
+						OrderStatus.Confirmed,
+						`Auto-assigned to ${availableRiders.name}`,
+					),
 				},
 			})
 

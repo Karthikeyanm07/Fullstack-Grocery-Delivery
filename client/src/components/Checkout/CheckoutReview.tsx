@@ -7,6 +7,7 @@ interface CheckoutReviewProps {
 	handlePlaceOrder: () => void;
 	loading: boolean;
 	total: number;
+	paymentMethod: string;
 }
 
 export default function CheckoutReview({
@@ -15,6 +16,7 @@ export default function CheckoutReview({
 	handlePlaceOrder,
 	loading,
 	total,
+	paymentMethod,
 }: CheckoutReviewProps) {
 	const currency = import.meta.env.VITE_CURRENCY_SYMBOL || "$";
 
@@ -35,6 +37,12 @@ export default function CheckoutReview({
 				<p className="text-sm text-app-text-light">
 					{address.label} — {address.address}, {address.city},{" "}
 					{address.state} {address.zip}
+				</p>
+			</div>
+			<div className="mb-5 p-4 bg-app-cream rounded-xl">
+				<p className="text-sm font-semibold text-app-green">Payment</p>
+				<p className="text-sm text-app-text-light capitalize">
+					{paymentMethod === "cash" ? "Cash on delivery" : "Card"}
 				</p>
 			</div>
 

@@ -5,6 +5,9 @@ import { BCRYPT_ROUNDS } from "../utils/authConstants.js";
 import { CreatePartnerSchema, UpdatePartnerSchema } from "../utils/schemas.js";
 import { getParamId, normalizeEmail } from "../utils/helper.js";
 import { OrderStatus, Prisma } from "../generated/prisma/client.js";
+import crypto from "crypto";
+import { appendStatusHistory, isTerminalOrderStatus } from "../utils/order.js";
+import { sendInvalidId } from "../utils/request.js";
 
 // * ─── Helpers ──────────────────────────────────────────────────────────────────
 // Strip password from partner before sending — never expose hashes
@@ -173,11 +176,7 @@ export const updateDeliveryPartner = async (req: Request, res: Response) => {
 	try {
 		const id = getParamId(req);
 		if (!id) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid partner ID.",
-			});
+			return sendInvalidId(res, "partner");
 		}
 
 		const parsed = UpdatePartnerSchema.safeParse(req.body);
@@ -233,18 +232,14 @@ export const assignDeliveryPartner = async (req: Request, res: Response) => {
 	try {
 		const orderId = getParamId(req);
 		if (!orderId) {
-			return res.status(400).json({
-				success: false,
-				code: "INVALIDid",
-				message: "Invalid order ID.",
-			});
+			return sendInvalidId(res, "order");
 		}
 
 		const { partnerId } = req.body as { partnerId?: unknown };
 		if (!partnerId || typeof partnerId !== "string") {
 			return res.status(400).json({
 				success: false,
-				code: "MISSING_PARTNERid",
+				code: "MISSING_PARTNER_ID",
 				message: "partnerId is required.",
 			});
 		}
@@ -280,10 +275,7 @@ export const assignDeliveryPartner = async (req: Request, res: Response) => {
 		}
 
 		// Guard against assigning a partner to an already delivered/cancelled order
-		if (
-			order.status === OrderStatus.Delivered ||
-			order.status === OrderStatus.Cancelled
-		) {
+		if (isTerminalOrderStatus(order.status)) {
 			return res.status(409).json({
 				success: false,
 				code: "INVALID_ORDER_STATE",
@@ -291,17 +283,16 @@ export const assignDeliveryPartner = async (req: Request, res: Response) => {
 			});
 		}
 
-		// Generate a 6-digit OTP for delivery confirmation
-		const otp = String(Math.floor(100000 + Math.random() * 900000));
+		if (order.paymentMethod === "card" && !order.isPaid) {
+			return res.status(409).json({
+				success: false,
+				code: "PAYMENT_PENDING",
+				message: "Cannot assign a delivery partner before payment is completed.",
+			});
+		}
 
-		const history = (
-			Array.isArray(order.statusHistory) ? order.statusHistory : []
-		) as object[];
-		history.push({
-			status: OrderStatus.Confirmed,
-			note: `Assigned to ${partner.name}`,
-			timestamp: new Date().toISOString(),
-		});
+		// Generate a 6-digit OTP for delivery confirmation
+		const otp = String(crypto.randomInt(100000, 1000000));
 
 		// Use the updated order — original returned pre-update stale `order` object
 		const updatedOrder = await prisma.order.update({
@@ -310,7 +301,11 @@ export const assignDeliveryPartner = async (req: Request, res: Response) => {
 				deliveryPartnerId: partner.id,
 				deliveryOtp: otp,
 				status: OrderStatus.Confirmed,
-				statusHistory: history as unknown as Prisma.InputJsonValue,
+				statusHistory: appendStatusHistory(
+					order.statusHistory,
+					OrderStatus.Confirmed,
+					`Assigned to ${partner.name}`,
+				),
 			},
 		});
 

@@ -5,6 +5,7 @@ import { ArrowRightIcon } from "lucide-react";
 import ProductCard from "../ProductCard.tsx";
 import api from "../../config/api.ts";
 import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../../utils/apiError.ts";
 
 const PopularProducts = () => {
 	const [products, setProducts] = useState<Product[]>([]);
@@ -15,7 +16,7 @@ const PopularProducts = () => {
 				const response = await api.get("/products?&sort=newest");
 				setProducts(response.products);
 			} catch (error) {
-				toast.error(error.response?.data.message || error?.message);
+				toast.error(getApiErrorMessage(error, "Failed to fetch products."));
 			}
 		};
 		fetchProducts();

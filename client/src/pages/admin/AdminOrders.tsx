@@ -3,10 +3,8 @@ import { TruckIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import type { DeliveryPartner } from "../../types";
 import Loading from "../../components/Loading";
-import {
-	dummyDashboardOrdersData,
-	dummyDeliveryPartnerData,
-} from "../../assets/assets";
+import api from "../../config/api";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 export default function AdminOrders() {
 	const currency = import.meta.env.VITE_CURRENCY_SYMBOL || "$";
@@ -18,13 +16,23 @@ export default function AdminOrders() {
 	const [selectedPartner, setSelectedPartner] = useState("");
 
 	const fetchOrders = async () => {
-		setOrders(dummyDashboardOrdersData);
-		setTimeout(() => setLoading(false), 1000);
+		try {
+			const response = await api.get("/orders/all");
+			setOrders(response.orders || []);
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to fetch orders."));
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	const fetchPartners = async () => {
-		setPartners(dummyDeliveryPartnerData as any);
-		setTimeout(() => setLoading(false), 1000);
+		try {
+			const response = await api.get("/admin/delivery-partners");
+			setPartners(response.partners || []);
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to fetch partners."));
+		}
 	};
 
 	useEffect(() => {
@@ -33,31 +41,47 @@ export default function AdminOrders() {
 	}, []);
 
 	const handleStatusChange = async (id: string, newStatus: string) => {
-		console.log(id, newStatus);
+		try {
+			const response = await api.put(`/orders/${id}/status`, {
+				status: newStatus,
+			});
+			setOrders((prev) =>
+				prev.map((order) => (order.id === id ? response.order : order)),
+			);
+			toast.success("Order status updated.");
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to update order."));
+		}
 	};
 
 	const handleAssign = async () => {
 		if (!assignModal || !selectedPartner) return;
-		toast.success("Delivery partner assigned!");
-		setAssignModal(null);
-		setSelectedPartner("");
+		try {
+			await api.put(`/admin/orders/${assignModal}/assign`, {
+				partnerId: selectedPartner,
+			});
+			await fetchOrders();
+			toast.success("Delivery partner assigned.");
+			setAssignModal(null);
+			setSelectedPartner("");
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to assign partner."));
+		}
 	};
 
 	const statusOptions = [
 		"Placed",
 		"Confirmed",
-		"Assigned",
-		"Packed",
-		"Out for Delivery",
+		"Preparing",
+		"OutForDelivery",
 		"Delivered",
 		"Cancelled",
 	];
 	const statusColors: any = {
 		Placed: "bg-blue-100 text-blue-800",
 		Confirmed: "bg-amber-100 text-amber-800",
-		Assigned: "bg-indigo-100 text-indigo-800",
-		Packed: "bg-cyan-100 text-cyan-800",
-		"Out for Delivery": "bg-purple-100 text-purple-800",
+		Preparing: "bg-cyan-100 text-cyan-800",
+		OutForDelivery: "bg-purple-100 text-purple-800",
 		Delivered: "bg-green-100 text-green-800",
 		Cancelled: "bg-red-100 text-red-800",
 	};

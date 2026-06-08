@@ -15,8 +15,8 @@ export default function CheckoutPayment({ setStep, paymentMethod, setPaymentMeth
             </h2>
             <div className="space-y-3">
                 {[
-                    { value: "card", label: "Credit / Debit Card", desc: "Pay securely with your card" },
                     { value: "cash", label: "Cash on Delivery", desc: "Pay when you receive" },
+                    { value: "card", label: "Credit / Debit Card", desc: "Payment gateway pending" },
                 ].map((method) => (
                     <label key={method.value} className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === method.value ? "border-app-green bg-app-cream" : "border-app-border hover:border-app-green-lighter"}`}>
                         <input type="radio" name="payment" value={method.value} checked={paymentMethod === method.value} onChange={(e) => setPaymentMethod(e.target.value)} className="size-4 text-app-green" />

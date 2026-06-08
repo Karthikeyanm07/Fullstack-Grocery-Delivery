@@ -16,10 +16,10 @@ import {
 	RESET_PASSWORD_WINDOW_MS,
 	RESET_TOKEN_EXPIRY_MS,
 } from "../utils/authConstants.js";
-import { checkRateLimit } from "../utils/rateLimiter.js";
 import { DUMMY_HASH, normalizeEmail } from "../utils/helper.js";
 import crypto from "crypto";
 import sendEmail, { isEmailConfigured } from "../config/nodemailer.js";
+import { enforceRateLimit, getClientIP } from "../utils/request.js";
 
 // * ─── Helpers ──────────────────────────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET as string;
@@ -50,38 +50,23 @@ const buildSafeUser = (user: {
 		email: user.email,
 		isAdmin: user.isAdmin,
 		createdAt: user.createdAt,
-		...(user.addresses !== undefined && { address: user.addresses }),
+		...(user.addresses !== undefined && { addresses: user.addresses }),
 	};
-};
-
-// Extract client IP safely across proxies.
-const getClientIP = (req: Request): string => {
-	const forwarded = req.headers["x-forwarded-for"];
-
-	if (typeof forwarded === "string") {
-		return forwarded.split(",")[0].trim();
-	}
-	return req.socket.remoteAddress ?? "unknown";
 };
 
 // * ─── POST /api/auth/register ───────────────────────────────────────────────
 export const register = async (req: Request, res: Response) => {
 	try {
-		const IP = getClientIP(req);
-
-		const rateLimit = await checkRateLimit({
-			key: `register:${IP}`,
+		const allowed = await enforceRateLimit({
+			key: `register:${getClientIP(req)}`,
 			maxAttempts: REGISTER_MAX_ATTEMPTS,
 			windowMS: REGISTER_WINDOW_MS,
+			res,
+			message: (retryAfterSec) =>
+				`Too many registration attempts. Try again in ${retryAfterSec} seconds.`,
 		});
-		if (!rateLimit.allowed) {
-			const retryAfterSec = Math.ceil(rateLimit.retryAfterMS / 1000);
-
-			return res.status(429).json({
-				success: false,
-				code: "TOO_MANY_ATTEMPTS",
-				message: `Too many registration attempts. Try again in ${retryAfterSec} seconds.`,
-			});
+		if (!allowed) {
+			return;
 		}
 
 		const { name, email, password } = req.body as Record<string, unknown>;
@@ -173,20 +158,16 @@ export const register = async (req: Request, res: Response) => {
 // * ─── POST /api/auth/login ───────────────────────────────────────────────
 export const login = async (req: Request, res: Response) => {
 	try {
-		const IP = getClientIP(req);
-		const rateLimit = await checkRateLimit({
-			key: `login:${IP}`,
+		const allowed = await enforceRateLimit({
+			key: `login:${getClientIP(req)}`,
 			maxAttempts: LOGIN_MAX_ATTEMPTS,
 			windowMS: LOGIN_WINDOW_MS,
+			res,
+			message: (retryAfterSec) =>
+				`Too many login attempts. Try again in ${retryAfterSec} seconds.`,
 		});
-
-		if (!rateLimit.allowed) {
-			const retryAfterSec = Math.ceil(rateLimit.retryAfterMS / 1000);
-			return res.status(429).json({
-				success: false,
-				code: "TOO_MANY_REQUESTS",
-				message: `Too many login attempts. Try again in ${retryAfterSec} seconds.`,
-			});
+		if (!allowed) {
+			return;
 		}
 		const { email, password } = req.body as Record<string, unknown>;
 		if (!email || !password) {
@@ -268,19 +249,16 @@ export const logout = (_req: Request, res: Response) => {
 
 export const forgotPassword = async (req: Request, res: Response) => {
 	try {
-		const ip = getClientIP(req);
-
-		const rateLimit = await checkRateLimit({
-			key: `forgot-password:${ip}`,
+		const allowed = await enforceRateLimit({
+			key: `forgot-password:${getClientIP(req)}`,
 			maxAttempts: FORGOT_PASSWORD_MAX_ATTEMPTS,
 			windowMS: FORGOT_PASSWORD_WINDOW_MS,
+			res,
+			message: (retryAfterSec) =>
+				`Too many attempts. Try again in ${retryAfterSec} seconds.`,
 		});
-		if (!rateLimit.allowed) {
-			return res.status(429).json({
-				success: false,
-				code: "TOO_MANY_REQUESTS",
-				message: `Too many attempts. Try again in ${Math.ceil(rateLimit.retryAfterMS / 1000)} seconds.`,
-			});
+		if (!allowed) {
+			return;
 		}
 
 		const { email } = req.body as Record<string, unknown>;
@@ -380,19 +358,16 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
 export const resetPassword = async (req: Request, res: Response) => {
 	try {
-		const ip = getClientIP(req);
-
-		const rateLimit = await checkRateLimit({
-			key: `reset-password:${ip}`,
+		const allowed = await enforceRateLimit({
+			key: `reset-password:${getClientIP(req)}`,
 			maxAttempts: RESET_PASSWORD_MAX_ATTEMPTS,
 			windowMS: RESET_PASSWORD_WINDOW_MS,
+			res,
+			message: (retryAfterSec) =>
+				`Too many attempts. Try again in ${retryAfterSec} seconds.`,
 		});
-		if (!rateLimit.allowed) {
-			return res.status(429).json({
-				success: false,
-				code: "TOO_MANY_REQUESTS",
-				message: `Too many attempts. Try again in ${Math.ceil(rateLimit.retryAfterMS / 1000)} seconds.`,
-			});
+		if (!allowed) {
+			return;
 		}
 
 		const { token, newPassword } = req.body as Record<string, unknown>;
@@ -456,13 +431,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 			prisma.passwordReset.delete({ where: { tokenHash } }),
 		]);
 
-		const jwt = await import("jsonwebtoken");
-		const JWT_SECRET = process.env.JWT_SECRET as string;
-		const authToken = jwt.default.sign(
-			{ id: resetRecord.userId },
-			JWT_SECRET,
-			{ expiresIn: "7d" },
-		);
+		const authToken = generateToken(resetRecord.userId);
 		sendAuthCookie(res, authToken);
 
 		return res.status(200).json({

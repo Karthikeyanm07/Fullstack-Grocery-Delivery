@@ -5,7 +5,9 @@ import CancelModal from "../../components/Delivery/CancelModal";
 import DeliveryOrderCard from "../../components/Delivery/DeliveryOrderCard";
 import Loading from "../../components/Loading";
 import type { Order } from "../../types";
-import { dummyDashboardOrdersData } from "../../assets/assets";
+import api from "../../config/api";
+import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 export default function DeliveryDashboard() {
 	const [orders, setOrders] = useState<Order[]>([]);
@@ -24,36 +26,106 @@ export default function DeliveryDashboard() {
 
 	const fetchOrders = async () => {
 		setLoading(true);
-		setOrders(dummyDashboardOrdersData as any);
-		setLoading(false);
+		try {
+			const response = await api.get(`/delivery/my-deliveries?status=${tab}`);
+			setOrders(response.orders || []);
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to fetch deliveries."));
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	useEffect(() => {
 		fetchOrders();
 	}, [tab]);
 
+	useEffect(() => {
+		if (!tracking || tab !== "active" || orders.length === 0) {
+			return;
+		}
+
+		const activeOrderIds = orders
+			.filter((order) =>
+				["Confirmed", "Preparing", "OutForDelivery"].includes(order.status),
+			)
+			.map((order) => order.id);
+
+		if (activeOrderIds.length === 0 || !navigator.geolocation) {
+			return;
+		}
+
+		const watchId = navigator.geolocation.watchPosition(
+			(position) => {
+				const payload = {
+					lat: position.coords.latitude,
+					lng: position.coords.longitude,
+				};
+				activeOrderIds.forEach((orderId) => {
+					api.put(`/delivery/my-deliveries/${orderId}/location`, payload).catch(
+						() => undefined,
+					);
+				});
+			},
+			() => toast.error("Unable to share your location."),
+			{ enableHighAccuracy: true, maximumAge: 15000, timeout: 15000 },
+		);
+
+		return () => navigator.geolocation.clearWatch(watchId);
+	}, [tracking, tab, orders]);
+
 	const handleUpdateStatus = async (orderId: string, status: string) => {
-		console.log(orderId, status);
+		try {
+			const response = await api.put(`/delivery/my-deliveries/${orderId}/status`, {
+				status,
+			});
+			setOrders((prev) =>
+				prev.map((order) => (order.id === orderId ? response.order : order)),
+			);
+			toast.success("Delivery status updated.");
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to update status."));
+		}
 	};
 
 	const handleComplete = async () => {
 		if (!otpModal || !otp) return;
 		setSubmitting(true);
-		setTimeout(() => {
-			setSubmitting(false);
+		try {
+			const response = await api.put(`/delivery/my-deliveries/${otpModal}/complete`, {
+				otp,
+			});
+			setOrders((prev) =>
+				prev.map((order) => (order.id === otpModal ? response.order : order)),
+			);
+			toast.success("Delivery completed.");
 			setOtpModal(null);
 			setOtp("");
-		}, 1000);
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to complete delivery."));
+		} finally {
+			setSubmitting(false);
+		}
 	};
 
 	const handleCancel = async () => {
 		if (!cancelModal) return;
 		setSubmitting(true);
-		setTimeout(() => {
-			setSubmitting(false);
+		try {
+			const response = await api.put(`/delivery/my-deliveries/${cancelModal}/cancel`, {
+				reason: cancelReason,
+			});
+			setOrders((prev) =>
+				prev.map((order) => (order.id === cancelModal ? response.order : order)),
+			);
+			toast.success("Delivery cancelled.");
 			setCancelModal(null);
 			setCancelReason("");
-		}, 1000);
+		} catch (error) {
+			toast.error(getApiErrorMessage(error, "Failed to cancel delivery."));
+		} finally {
+			setSubmitting(false);
+		}
 	};
 
 	return (
